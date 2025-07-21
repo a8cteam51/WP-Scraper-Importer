@@ -78,10 +78,12 @@ class Content_Scrapper {
 	 * Process the URL and scrape the content.
 	 *
 	 * @return void
+	 *
+	 * @throws InvalidArgumentException If the URL is empty.
 	 */
 	public function process(): void {
 		// If we dont have a URL, we can't scrape.
-		if ( empty( $this->url ) ) {
+		if ( '' === $this->url ) {
 			throw new InvalidArgumentException( 'URL cannot be empty.' );
 		}
 
@@ -120,7 +122,7 @@ class Content_Scrapper {
 	 * @return boolean
 	 */
 	public function has_errors(): bool {
-		return ! empty( $this->errors );
+		return count( $this->errors ) > 0;
 	}
 
 	/**
@@ -136,6 +138,8 @@ class Content_Scrapper {
 	 * Get the scraped content.
 	 *
 	 * @return string
+	 *
+	 * @throws RuntimeException If the content has not been scraped yet.
 	 */
 	public function get_content(): string {
 		if ( ! $this->scraped ) {
@@ -148,6 +152,7 @@ class Content_Scrapper {
 	 * Get the page header.
 	 *
 	 * @return array<string, string>
+	 * @throws RuntimeException If the content has not been scraped yet.
 	 */
 	public function get_header(): array {
 		if ( ! $this->scraped ) {
@@ -160,6 +165,7 @@ class Content_Scrapper {
 	 * Get the URL that was scraped.
 	 *
 	 * @return string
+	 * @throws RuntimeException If the content has not been scraped yet.
 	 */
 	public function get_url(): string {
 		if ( ! $this->scraped ) {
@@ -172,6 +178,7 @@ class Content_Scrapper {
 	 * Get the final URL after following redirects.
 	 *
 	 * @return string
+	 * @throws RuntimeException If the content has not been scraped yet.
 	 */
 	public function get_final_url(): string {
 		if ( ! $this->scraped ) {
@@ -184,6 +191,7 @@ class Content_Scrapper {
 	 * Checks if there was any redirects during the scraping.
 	 *
 	 * @return boolean
+	 * @throws RuntimeException If the content has not been scraped yet.
 	 */
 	public function had_redirected(): bool {
 		if ( ! $this->scraped ) {
@@ -198,7 +206,7 @@ class Content_Scrapper {
 	 * @param string  $url            The URL to follow.
 	 * @param integer $redirect_count The current redirect count.
 	 *
-	 * @return array|null
+	 * @return array{header: array<string, string>, content: string, http_code: int, url: string}|null
 	 */
 	private function follow_redirects( string $url, int $redirect_count = 0 ): ?array {
 		$redirect_codes = array( 301, 302, 303, 307, 308 );
@@ -210,12 +218,15 @@ class Content_Scrapper {
 			return null; // Error fetching URL.
 		}
 		if ( in_array( $response['response']['code'], $redirect_codes, true ) ) {
-			$redirect_url = $response['response']['location'];
+			$redirect_url = $response['headers']['location'] ?? '';
+			if ( '' === $redirect_url ) {
+				return null; // No location header found.
+			}
 			return $this->follow_redirects( $redirect_url, $redirect_count + 1 );
 		}
 
 		return array(
-			'header'    => $response['headers'],
+			'header'    => $response['headers']->getAll(),
 			'content'   => wp_remote_retrieve_body( $response ),
 			'http_code' => $response['response']['code'],
 			'url'       => $url,

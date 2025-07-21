@@ -17,6 +17,7 @@ defined( 'ABSPATH' ) || exit;
 use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
 use A8C\SpecialProjects\ScrapperToWP\Action\Post_Inserter;
 use A8C\SpecialProjects\ScrapperToWP\Service\Progress_Tracker;
+use A8C\SpecialProjects\ScrapperToWP\Mapper\Default_Content_Mapper;
 use WP_CLI_Command;
 use Exception;
 use WP;
@@ -197,13 +198,11 @@ class Import_Command extends WP_CLI_Command {
 			// Check the url-list is a valid file.
 			if ( ! file_exists( $assoc_args['url-list'] ) ) {
 				\WP_CLI::error( 'The url-list file does not exist.' );
-				exit( 1 );
 			}
 
 			// Check if the url-list is a valid CSV file.
-			if ( ! preg_match( '#\.csv$#i', $assoc_args['url-list'] ) ) {
+			if ( 0 === preg_match( '#\.csv$#i', $assoc_args['url-list'] ) ) {
 				\WP_CLI::error( 'The url-list file is not a valid CSV file.' );
-				exit( 1 );
 			}
 
 			$csv_location = $assoc_args['url-list'];
@@ -233,29 +232,30 @@ class Import_Command extends WP_CLI_Command {
 		$links = array();
 
 		if ( ! file_exists( $csv_file ) ) {
-			\WP_CLI::error( 'The CSV file does not exist.' );
+			\WP_CLI::warning( 'The CSV file does not exist.' );
 			return $links;
 		}
 
 		if ( ! is_readable( $csv_file ) ) {
-			\WP_CLI::error( 'The CSV file is not readable.' );
+			\WP_CLI::warning( 'The CSV file is not readable.' );
 			return $links;
 		}
 
-		if ( false === ( $handle = fopen( $csv_file, 'r' ) ) ) {
-			\WP_CLI::error( 'The CSV file could not be opened.' );
+		$handle = fopen( $csv_file, 'r' );  // phpcs:ignore
+		if ( false === $handle ) {
+			\WP_CLI::warning( 'The CSV file could not be opened.' );
 			return $links;
 		}
 
-		while ( ( $data = fgetcsv( $handle, 1000, ',' ) ) !== false ) {
+		while ( ( $data = fgetcsv( $handle, 1000, ',' ) ) !== false ) { // phpcs:ignore
 			foreach ( $data as $link ) {
-				if ( filter_var( $link, FILTER_VALIDATE_URL ) ) {
+				if ( is_string( $link ) && false !== filter_var( $link, FILTER_VALIDATE_URL ) ) {
 					$links[] = $link;
 				}
 			}
 		}
 
-		fclose( $handle );
+		fclose( $handle );  // phpcs:ignore
 
 		return $links;
 	}
@@ -280,13 +280,13 @@ class Import_Command extends WP_CLI_Command {
 		);
 
 		// If we have no urls,
-		if ( empty( $urls ) ) {
+		if ( 0 === count( $urls ) ) {
 			$this->finish_import();
 			return;
 		}
 
 		// Chunk based on the links per request.
-		$chunks = array_chunk( $urls, $this->links_per_request );
+		$chunks = array_chunk( $urls, max( 1, $this->links_per_request ) );
 
 		// if no silent mode, show the chunk count.
 		if ( ! $this->is_silent() ) {
@@ -303,7 +303,7 @@ class Import_Command extends WP_CLI_Command {
 		foreach ( $chunks as $key => $chunk ) {
 
 			// Increase the tracker
-			if ( ! $this->is_silent() ) {
+			if ( ! $this->is_silent() && isset( $bar ) ) {
 				$bar->tick();
 			}
 
@@ -311,18 +311,18 @@ class Import_Command extends WP_CLI_Command {
 			$this->process_chunk( $chunk );
 
 			// Wait for the delay, if we have more chunks left
-			if ( $key !== \array_key_last( $chunks ) ) {
+			if ( \array_key_last( $chunks ) !== $key ) {
 				sleep( $this->delay );
 			}
 		}
 
 		// If not in silent mode, finish the progress bar.
-		if ( ! $this->is_silent() ) {
+		if ( ! $this->is_silent() && isset( $bar ) ) {
 			$bar->finish();
 		}
 
 		// Show any errors that occurred during the import.
-		if ( ! empty( $this->errors ) && ! $this->is_silent() ) {
+		if ( 0 !== count( $this->errors ) && ! $this->is_silent() ) {
 			\WP_CLI::warning( 'Errors occurred during the import:' );
 			foreach ( $this->errors as $error ) {
 				\WP_CLI::warning( $error );
@@ -334,12 +334,12 @@ class Import_Command extends WP_CLI_Command {
 			\WP_CLI::line( 'Import process completed.' );
 			\WP_CLI::line( 'Processed URLs: ' . $this->progress_tracker->get_scraped_count() );
 			\WP_CLI::line( 'Errors: ' . count( $this->errors ) );
-			if ( ! empty( $this->errors ) ) {
+			if ( 0 !== count( $this->errors ) ) {
 				foreach ( $this->errors as $error ) {
 					\WP_CLI::line( 'Error: ' . $error );
 				}
 			}
-			if ( ! empty( $this->messages ) ) {
+			if ( 0 !== count( $this->messages ) ) {
 				foreach ( $this->messages as $message ) {
 					\WP_CLI::line( 'Message: ' . $message );
 				}
@@ -347,16 +347,17 @@ class Import_Command extends WP_CLI_Command {
 		}
 	}
 
-	/***
+	/**
 	 * Process a chunk of urls.
 	 *
-	 * @param string[] $urls The array of URLs to process.
+	 * @param array<int, string> $url_chunk The array of URLs to process.
 	 *
 	 * @return void
 	 */
-	public function process_chunk( array $urls ): void {
+	/** @phpstan-ignore-next-line phpcs:ignore */
+	public function process_chunk( array $url_chunk ): void {
 		// Iterate over the links and scrape the content.
-		foreach ( $urls as $url ) {
+		foreach ( $url_chunk as $url ) {
 			try {
 				// Create a new content scrapper instance.
 				$content_scrapper = new Content_Scrapper( $url );
@@ -397,10 +398,12 @@ class Import_Command extends WP_CLI_Command {
 	 * @throws Exception Thrown if there are errors during the dry run.
 	 */
 	public function process_as_dry_run( Content_Scrapper $content_scrapper ): void {
-		$title   = $this->get_page_title( $content_scrapper );
-		$content = $this->get_page_content( $content_scrapper );
-		$author  = $this->get_content_author( $content_scrapper );
-		$terms   = $this->get_terms_from_content( $content_scrapper );
+		$mapper = new Default_Content_Mapper( $content_scrapper );
+
+		$title   = $mapper->get_title();
+		$content = $mapper->get_content();
+		$author  = $mapper->get_author();
+		$terms   = $mapper->get_terms();
 
 		// Check if we have any errors.
 		if ( $content_scrapper->has_errors() ) {
@@ -437,17 +440,13 @@ class Import_Command extends WP_CLI_Command {
 			\WP_CLI::line( 'Import process completed.' );
 			\WP_CLI::line( 'Processed URLs: ' . count( $this->processed_urls ) );
 			\WP_CLI::line( 'Errors: ' . count( $this->errors ) );
-			if ( ! empty( $this->errors ) ) {
+			if ( 0 !== count( $this->errors ) ) {
 				\WP_CLI::line( 'Errors: ' . implode( PHP_EOL, $this->errors ) );
 			}
 			\WP_CLI::line( 'Scraped URLs: ' . implode( PHP_EOL, $this->progress_tracker->get_scraped_urls() ) );
 			\WP_CLI::line( '----------------------------------------' );
 		}
-		// Save the progress tracker.
-		$this->progress_tracker->save_progress();
-		if ( ! $this->is_silent() ) {
-			\WP_CLI::line( 'Progress saved to ' . $this->progress_tracker->get_file_path() );
-		}
+		// Progress is automatically saved when URLs are added
 	}
 
 	/**
@@ -460,20 +459,70 @@ class Import_Command extends WP_CLI_Command {
 	 * @return void
 	 */
 	public function process_as_import( Content_Scrapper $content_scrapper ): void {
-		$title   = $this->get_page_title( $content_scrapper );
-		$content = $this->get_page_content( $content_scrapper );
-		$author  = $this->get_content_author( $content_scrapper );
-		$terms   = $this->get_terms_from_content( $content_scrapper );
+		// ====================================================================
+		// EXTENSION POINT 1: CUSTOMIZE THE CONTENT MAPPER
+		// ====================================================================
 
-		/******************************************
-		 * Set These params as you need.
+		/*
+		 * This is where you can change which mapper class to use for processing
+		 * the scraped content. You have several options:
+		 *
+		 * OPTION 1: Use a different mapper class entirely
+		 * $mapper = new Custom_Blog_Mapper( $content_scrapper );
+		 * $mapper = new Product_Mapper( $content_scrapper );
+		 * $mapper = new News_Article_Mapper( $content_scrapper );
+		 *
+		 * OPTION 2: Choose mapper based on URL or content
+		 * $url = $content_scrapper->get_url();
+		 * if ( strpos( $url, '/products/' ) !== false ) {
+		 *     $mapper = new Product_Mapper( $content_scrapper );
+		 * } elseif ( strpos( $url, '/news/' ) !== false ) {
+		 *     $mapper = new News_Mapper( $content_scrapper );
+		 * } else {
+		 *     $mapper = new Default_Content_Mapper( $content_scrapper );
+		 * }
+		 *
+		 * OPTION 3: Choose mapper based on content analysis
+		 * $content = $content_scrapper->get_content();
+		 * if ( strpos( $content, 'class="recipe"' ) !== false ) {
+		 *     $mapper = new Recipe_Mapper( $content_scrapper );
+		 * } elseif ( strpos( $content, 'class="event"' ) !== false ) {
+		 *     $mapper = new Event_Mapper( $content_scrapper );
+		 * } else {
+		 *     $mapper = new Default_Content_Mapper( $content_scrapper );
+		 * }
+		 *
+		 * OPTION 4: Dynamic mapper selection with fallbacks
+		 * $mapper_classes = [
+		 *     'Specialized_Mapper',
+		 *     'Fallback_Mapper',
+		 *     'Default_Content_Mapper'
+		 * ];
+		 * foreach ( $mapper_classes as $class ) {
+		 *     if ( class_exists( $class ) ) {
+		 *         $mapper = new $class( $content_scrapper );
+		 *         break;
+		 *     }
+		 * }
+		 *
+		 * CREATE YOUR OWN MAPPER: Extend Default_Content_Mapper or Abstract_Content_Mapper
+		 * See /src/Mapper/Default_Content_Mapper.php for detailed customization examples
 		 */
+		// ====================================================================
 
-		$post_status    = 'publish'; // Set the post status.
-		$post_type      = 'post'; // Set the post type.
-		$post_parent    = 0; // Set the post parent ID if needed.
-		$featured_image = 'https://pinkcrab.gq/wp-content/uploads/2024/12/FdoBd21WIAsdpgW_25.jpg'; // Set the featured image URL if needed.
-		$meta           = array();
+		$mapper = new Default_Content_Mapper( $content_scrapper );
+
+		$title   = $mapper->get_title();
+		$content = $mapper->get_content();
+		$author  = $mapper->get_author();
+		$terms   = $mapper->get_terms();
+
+		// Get post configuration from mapper
+		$post_status    = $mapper->get_post_status();
+		$post_type      = $mapper->get_post_type();
+		$post_parent    = $mapper->get_post_parent();
+		$featured_image = $mapper->get_featured_image();
+		$meta           = $mapper->get_post_meta();
 
 		$inserter = new Post_Inserter(
 			$title,
@@ -487,22 +536,119 @@ class Import_Command extends WP_CLI_Command {
 			->set_post_type( $post_type )
 			->set_parent_id( $post_parent );
 
-		## THIS IS SOMEWHERE YOUY CAN ADD YOUR OWN CODE TO MODIFY THE INSERTION OR EDITING
+		// ====================================================================
+		// EXTENSION POINT 2: CUSTOMIZE POST INSERTION & PROCESSING
+		// ====================================================================
+		//
+		// This is the perfect place to modify the Post_Inserter object before
+		// creating or updating posts. You can add custom logic here:
+		//
+		// EXAMPLE 1: Add custom post meta based on conditions
+		// if ( $post_type === 'product' ) {
+		// $inserter->add_meta( '_product_sku', uniqid( 'SKU-' ) );
+		// $inserter->add_meta( '_product_source', 'imported' );
+		// }
+		//
+		// EXAMPLE 2: Set publish date based on content
+		// if ( preg_match('/published[:\s]+([0-9-]+)/', $content, $matches) ) {
+		// $inserter->set_post_date( $matches[1] );
+		// }
+		//
+		// EXAMPLE 3: Add to specific taxonomy terms
+		// if ( strpos( $content_scrapper->get_url(), 'electronics' ) !== false ) {
+		// $inserter->add_terms( 'product_category', ['Electronics', 'Imported'] );
+		// }
+		//
+		// EXAMPLE 4: Set custom post format
+		// if ( strpos( $content, '<blockquote>' ) !== false ) {
+		// $inserter->set_post_format( 'quote' );
+		// }
+		//
+		// EXAMPLE 5: Conditional processing based on content quality
+		// $word_count = str_word_count( wp_strip_all_tags( $content ) );
+		// if ( $word_count < 100 ) {
+		// $inserter->set_post_status( 'draft' );
+		// $inserter->add_meta( '_import_note', 'Short content - needs review' );
+		// }
+		//
+		// EXAMPLE 6: Set menu order for pages
+		// if ( $post_type === 'page' ) {
+		// $url_segments = explode( '/', trim( parse_url( $content_scrapper->get_url(), PHP_URL_PATH ), '/' ) );
+		// $inserter->set_menu_order( count( $url_segments ) );
+		// }
+		//
+		// EXAMPLE 7: Add custom hooks for third-party integrations
+		// do_action( 'scraper_before_post_insert', $inserter, $content_scrapper, $mapper );
+		//
+		// EXAMPLE 8: Set excerpt if not automatically generated
+		// if ( empty( $inserter->get_post_excerpt() ) ) {
+		// $excerpt = wp_trim_words( wp_strip_all_tags( $content ), 30 );
+		// $inserter->set_post_excerpt( $excerpt );
+		// }
+		//
+		// EXAMPLE 9: Handle duplicates - check if post already exists
+		// $existing_post = get_page_by_title( $title, OBJECT, $post_type );
+		// if ( $existing_post ) {
+		// Update instead of create
+		// $post = $inserter->update( $existing_post->ID );
+		// } else {
+		// $post = $inserter->create();
+		// }
+		//
+		// EXAMPLE 10: Log import details for debugging
+		// error_log( sprintf(
+		// 'Importing: %s | Type: %s | Status: %s | URL: %s',
+		// $title,
+		// $post_type,
+		// $post_status,
+		// $content_scrapper->get_url()
+		// ) );
+		//
+		// ADD YOUR CUSTOM POST PROCESSING LOGIC HERE
+		// ====================================================================
 
 		// If creating a post.
 		$post = $inserter->create();
 
-		// If updating the post
+		// If updating the post phpcs:ignore
 		// $post = $inserter->update( $post_id );
 
-		###### END REGION
+		// ====================================================================
+		// EXTENSION POINT 3: POST-CREATION PROCESSING
+		// ====================================================================
+		//
+		// After the post is created, you can add additional processing:
+		//
+		// EXAMPLE 1: Send notifications
+		// if ( $inserter->has_post_instance() ) {
+		// wp_mail( 'admin@site.com', 'New Import', 'Post imported: ' . $title );
+		// }
+		//
+		// EXAMPLE 2: Clear caches
+		// if ( function_exists( 'wp_cache_flush' ) ) {
+		// wp_cache_flush();
+		// }
+		//
+		// EXAMPLE 3: Trigger webhooks
+		// if ( $inserter->has_post_instance() ) {
+		// wp_remote_post( 'https://webhook.site/your-webhook', [
+		// 'body' => json_encode([
+		// 'action' => 'post_imported',
+		// 'post_id' => $inserter->get_post_id(),
+		// 'title' => $title,
+		// 'url' => $content_scrapper->get_url()
+		// ])
+		// ]);
+		// }
+		// ====================================================================
+
 		// If we dont have a post, we can assume there was an error.
 		if ( ! $inserter->has_post_instance() ) {
 			$this->errors[] = 'Error creating post for URL: ' . $content_scrapper->get_url();
 		}
 
 		// if we have a featured image, set it.
-		if ( ! empty( $featured_image ) ) {
+		if ( '' !== $featured_image ) {
 			$inserter = $inserter->set_featured_image( $featured_image, array() ); // WP MEDIA UPLOAD ARGS.
 		}
 
@@ -510,139 +656,28 @@ class Import_Command extends WP_CLI_Command {
 		$error     = array_filter(
 			$inserter->get_import_log(),
 			function ( $log ) {
-				return isset( $log['type'] ) && 'error' === $log['type'];
+				return 'error' === $log['type'];
 			}
 		);
 		$not_error = array_filter(
 			$inserter->get_import_log(),
 			function ( $log ) {
-				return isset( $log['type'] ) && 'error' !== $log['type'];
+				return 'error' !== $log['type'];
 			}
 		);
 		// Add the errors to the errors array.
-		if ( ! empty( $error ) ) {
+		if ( 0 !== count( $error ) ) {
 			foreach ( $error as $err ) {
 				$this->errors[] = $err['message'];
 			}
 		}
 
 		// Add the messages to the messages array.
-		if ( ! empty( $not_error ) ) {
+		if ( 0 !== count( $not_error ) ) {
 			foreach ( $not_error as $msg ) {
 				$this->messages[] = $msg['message'];
 			}
 		}
-	}
-
-	/**
-	 * Get the page title from the content scrapper.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
-	 *
-	 * @return string The page title.
-	 */
-	public function get_page_title( Content_Scrapper $content_scrapper ): string {
-		// If the content scrapper has a title, return it.
-		if ( $content_scrapper->is_scraped() ) {
-			$processor = new \WP_HTML_Tag_Processor( $content_scrapper->get_content() );
-			if ( $processor->next_tag( 'title' ) ) {
-				$processor->get_tag();
-				return $processor->get_modifiable_text();
-			}
-		}
-
-		// Otherwise, return a default title.
-		return 'Imported Content';
-	}
-
-	/**
-	 * Get the pages content from the content scrapper.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
-	 *
-	 * @return string The page content.
-	 */
-	public function get_page_content( Content_Scrapper $content_scrapper ): string {
-		// If the content scrapper has content, extract the body content.
-		if ( $content_scrapper->is_scraped() ) {
-			libxml_use_internal_errors( true );
-			$dom = new \DOMDocument();
-			$dom->loadHTML( $content_scrapper->get_content(), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
-
-			// Extract the content from the body tag.
-			$body = $dom->getElementsByTagName( 'main' )->item( 0 );
-			if ( ! $body ) {
-				return null;
-			}
-
-			// Iterate through the body children and concatenate their HTML.
-			$body_content = '';
-			foreach ( $body->childNodes as $child ) { // phpcs:ignore
-				// Pass through the content child node mapping function.
-				// This function can be overridden to modify the content.
-				$body_content .= $this->map_content_child_node( $dom->saveHTML( $child ) );
-			}
-
-			return trim( $body_content );
-		}
-
-		// Otherwise, return an empty string.
-		return '';
-	}
-
-	/**
-	 * Map a content child node.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $nodes_html The HTML of the nodes.
-	 *
-	 * @return string The mapped HTML.
-	 */
-	public function map_content_child_node( string $nodes_html ): string {
-		// ADD YOUR OWN CODE IN HERE.
-		// This is a placeholder function, implement your logic to map the content child nodes.
-		return $nodes_html; // Placeholder, return the original HTML.
-	}
-
-	/**
-	 * Get the contents author
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
-	 *
-	 * @return integer The user id of the author.
-	 */
-	public function get_content_author( Content_Scrapper $content_scrapper ): int {
-		// ADD YOUR OWN CODE IN HERE.
-		$content = $content_scrapper->get_content();
-
-		return 1; // Placeholder, implement your logic to extract the author.
-	}
-
-	/**
-	 * Get terms from the content.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
-	 *
-	 * @return array<string, array<int, string>> An array of terms. {tag: [foo, bar], category: [baz]}
-	 */
-	public function get_terms_from_content( Content_Scrapper $content_scrapper ): array {
-		// ADD YOUR OWN CODE IN HERE.
-		$content = $content_scrapper->get_content();
-
-		// Placeholder, implement your logic to extract terms.
-		return array(
-			'tag'      => array(),
-			'category' => array(),
-		);
 	}
 
 	/**
@@ -666,11 +701,6 @@ class Import_Command extends WP_CLI_Command {
 	 * @return void
 	 */
 	private function show_pre_run_messages() {
-		// If in silent mode, do not show any messages.
-		if ( $this->is_silent() ) {
-			return;
-		}
-
 		\WP_CLI::line( 'Scrapper to WP - Import Command' );
 		\WP_CLI::line( '----------------------------------------' );
 		\WP_CLI::line( 'This command will scrape the content from the URLs provided.' );

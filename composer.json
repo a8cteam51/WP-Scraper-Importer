@@ -50,7 +50,6 @@
         "format:php": "phpcbf --standard=./.phpcs.xml --basepath=. ./ -v",
         "lint:php": [
             "@lint:php:phpcs",
-            "@lint:php:phpmd",
             "@lint:php:phpstan"
         ],
         "lint:php:phpcs": "phpcs --standard=./.phpcs.xml --basepath=. ./ -v",

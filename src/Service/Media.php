@@ -31,8 +31,8 @@ class Media {
 	/**
 	 * Upload image from URL.
 	 *
-	 * @param string $image_url The URL of the image to upload.
-	 * @param array  $args      Additional arguments for the media import command.
+	 * @param string               $image_url The URL of the image to upload.
+	 * @param array<string, mixed> $args      Additional arguments for the media import command.
 	 *
 	 * @return integer|null
 	 *
@@ -41,7 +41,8 @@ class Media {
 	 */
 	public static function from_url( string $image_url, array $args = array() ): ?int {
 
-		if ( empty( $image_url ) || ! filter_var( $image_url, FILTER_VALIDATE_URL ) ) {
+		if ( '' === $image_url ||
+			filter_var( $image_url, FILTER_VALIDATE_URL ) === false ) {
 			throw new InvalidArgumentException( 'Invalid image URL provided for upload.' );
 		}
 
@@ -70,10 +71,10 @@ class Media {
 			$key_dash = str_replace( '_', '-', $key );
 
 			if ( in_array( $key_dash, $allowed_args, true ) ) {
-				if ( is_bool( $value ) && $value === true ) {
+				if ( is_bool( $value ) && $value ) {
 					$command .= " --$key_dash"; // flag without value
 				} elseif ( is_scalar( $value ) ) {
-					$command .= " --$key_dash=" . escapeshellarg( $value );
+					$command .= " --$key_dash=" . escapeshellarg( (string) $value );
 				}
 			}
 		}

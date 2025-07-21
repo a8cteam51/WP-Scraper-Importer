@@ -17,6 +17,9 @@ namespace A8C\SpecialProjects\ScrapperToWP\Action;
 use RuntimeException;
 use InvalidArgumentException;
 use WP_CLI;
+use WP_Post;
+use WP_Error;
+use WP_Term;
 use A8C\SpecialProjects\ScrapperToWP\Service\Media;
 
 defined( 'ABSPATH' ) || exit;
@@ -34,7 +37,7 @@ class Post_Inserter {
 	 *  content: string,
 	 *  status: string,
 	 *  author: int,
-	 *  taxonomies<string, string[]>,
+	 *  taxonomies: array<string, string[]>,
 	 *  meta: array<string, mixed>
 	 * }
 	 */
@@ -143,11 +146,13 @@ class Post_Inserter {
 	 * @return boolean
 	 */
 	public function has_errors(): bool {
-		return $this->has_errors;
+		return $this->has_fatal_errors;
 	}
 
 	/**
 	 * Get the import log.
+	 *
+	 * @return array<int, array{type: string, message: string}>
 	 */
 	public function get_import_log(): array {
 		return $this->import_log;
@@ -163,7 +168,7 @@ class Post_Inserter {
 	 * @throws InvalidArgumentException If the post type is empty.
 	 */
 	public function set_post_type( string $post_type ): self {
-		if ( empty( $post_type ) ) {
+		if ( '' === $post_type ) {
 			throw new InvalidArgumentException( 'Post type cannot be empty.' );
 		}
 
@@ -182,7 +187,7 @@ class Post_Inserter {
 	 * @throws InvalidArgumentException If the parent ID is not a valid integer.
 	 */
 	public function set_parent_id( int $parent_id ): self {
-		if ( ! is_int( $parent_id ) || $parent_id < 0 ) {
+		if ( $parent_id < 0 ) {
 			throw new InvalidArgumentException( 'Parent ID must be a valid non-negative integer.' );
 		}
 
@@ -215,20 +220,24 @@ class Post_Inserter {
 		}
 
 		// Get the post instance.
-		$this->post_instance = get_post( $post_id );
-		if ( ! $this->post_instance instanceof \WP_Post ) {
+		$found_post = get_post( $post_id );
+		if ( ! $found_post instanceof \WP_Post ) {
 			$this->log_error( 'Failed to retrieve the post instance after insertion.', 'post_insertion', true );
 			// If this is a wp Error, we return it.
-			if ( is_wp_error( $this->post_instance ) ) {
+			if ( is_wp_error( $found_post ) ) {
 				return $this;
 			}
 
 			$this->post_instance = new \WP_Error( 'post_insertion_failed', 'Failed to retrieve the post instance after insertion.' );
+		} else {
+			$this->post_instance = $found_post;
+
+			$this->add_to_import_log(
+				sprintf( 'Post "%s" created with ID %d.', $this->post_instance->post_title, $this->post_instance->ID ),
+				'info'
+			);
 		}
-		$this->add_to_import_log(
-			sprintf( 'Post "%s" created with ID %d.', $this->post_instance->post_title, $this->post_instance->ID ),
-			'info'
-		);
+
 		return $this;
 	}
 
@@ -240,9 +249,10 @@ class Post_Inserter {
 	 * @return self
 	 */
 	public function update( int $post_id ) {
-		if ( ! $post_id || ! is_int( $post_id ) ) {
+		// If we have a post id less than 1, we cannot update.
+		if ( 1 > $post_id ) {
 			$this->log_error( 'Invalid post ID provided for update.', 'post_update', true );
-			return new \WP_Error( 'invalid_post_id', 'Post ID must be a valid integer.' );
+			return $this;
 		}
 
 		// Prepare the post data for update.
@@ -260,17 +270,27 @@ class Post_Inserter {
 		$post_id = wp_update_post( $post_data, true );
 		if ( is_wp_error( $post_id ) ) {
 			$this->post_instance = $post_id; // Store the error in the post instance.
-			return $post_id; // Return the error if the post update failed.
+			return $this;
 		}
 
 		// Get the updated post instance.
-		$this->post_instance = get_post( $post_id );
-		if ( ! $this->post_instance instanceof \WP_Post ) {
+		$found = get_post( $post_id );
+
+		if ( ! $found instanceof \WP_Post ) {
 			$this->log_error( 'Failed to retrieve the post instance after update.', 'post_update', true );
-			return new \WP_Error( 'post_update_failed', 'Failed to retrieve the post instance after update.' );
+			// If this is a wp Error, we return it.
+			if ( is_wp_error( $found ) ) {
+				$this->post_instance = $found;
+			} else {
+				$this->post_instance = new \WP_Error( 'post_update_failed', 'Failed to retrieve the post instance after update.' );
+			}
+
+			return $this;
+		} else {
+			$this->post_instance = $found;
 		}
 
-		return $this->post_instance;
+		return $this;
 	}
 
 	/**
@@ -309,8 +329,9 @@ class Post_Inserter {
 
 					/*********************************************************
 					 * If you want to set the term meta, you can do it here *
-					 *********************************************************/
-					// Example: update_term_meta( $term->term_id, 'meta_key', 'meta_value' );
+					 *
+					 * Example: update_term_meta( $term->term_id, 'meta_key', 'meta_value' );
+					 */
 				}
 			}
 		}
@@ -336,22 +357,37 @@ class Post_Inserter {
 		}
 
 		// Check if the term exists.
-		$term = get_term_by( 'name', $term, $taxonomy );
-		if ( $term instanceof \WP_Term ) {
-			return $term; // Return the existing term.
+		$term_instance = get_term_by( 'name', $term, $taxonomy );
+		if ( $term_instance instanceof \WP_Term ) {
+			return $term_instance; // Return the existing term.
 		}
 
 		// If the term does not exist, create it.
-		$term = wp_insert_term( sanitize_text_field( $term ), $taxonomy );
-		if ( is_wp_error( $term ) ) {
+		$term_inserted = wp_insert_term( sanitize_text_field( $term ), $taxonomy );
+		if ( is_wp_error( $term_inserted ) ) {
 			$this->add_to_import_log(
-				sprintf( 'Failed to create term "%s" in taxonomy "%s": %s', $term, $taxonomy, $term->get_error_message() ),
+				sprintf(
+					'Failed to create term "%s" in taxonomy "%s": %s',
+					$term,
+					$taxonomy,
+					(string) $term_inserted->get_error_message()
+				),
 				'error'
 			);
-			return $term; // Return the error if term creation failed.
+			return $term_inserted; // Return the error if term creation failed.
 		}
 
-		return get_term( $term['term_id'], $taxonomy ); // Return the newly created term.
+		// Get the newly created term.
+		$new_term = get_term( $term_inserted['term_id'], $taxonomy );
+		if ( ! $new_term instanceof \WP_Term ) {
+			$this->add_to_import_log(
+				sprintf( 'Failed to retrieve the newly created term "%s" in taxonomy "%s".', $term, $taxonomy ),
+				'error'
+			);
+			return new \WP_Error( 'term_retrieval_failed', 'Failed to retrieve the newly created term.' );
+		}
+
+		return $new_term;
 	}
 
 	/**
@@ -368,7 +404,7 @@ class Post_Inserter {
 
 		// Loop through the meta data and set it.
 		foreach ( $this->post_data['meta'] as $key => $value ) {
-			if ( ! is_string( $key ) || empty( $key ) ) {
+			if ( ! is_string( $key ) || '' === $key ) {
 				$this->add_to_import_log(
 					sprintf( 'Meta key "%s" is invalid. Skipping.', $key ),
 					'warning'
@@ -389,7 +425,7 @@ class Post_Inserter {
 	/**
 	 * Perform an operation with the post.
 	 *
-	 * @param callable(WP_Post|WP_Error):WP_Post|WP_Error $callback The callback to perform with the post instance.
+	 * @param callable $callback The callback to perform with the post instance.
 	 *
 	 * @return self
 	 *
@@ -408,8 +444,8 @@ class Post_Inserter {
 	/**
 	 * Set a featured image from URL.
 	 *
-	 * @param string $image_url The URL of the image to set as featured image.
-	 * @param array  $args      Additional arguments for the Media service.
+	 * @param string               $image_url The URL of the image to set as featured image.
+	 * @param array<string, mixed> $args      Additional arguments for the Media service.
 	 *
 	 * @return self
 	 */
@@ -422,8 +458,8 @@ class Post_Inserter {
 		try {
 			// Attempt to upload the image from the URL.
 			$attachment_id = Media::from_url( $image_url, $args );
-			if ( is_wp_error( $attachment_id ) ) {
-				$this->log_error( 'Failed to upload image from URL: ' . $attachment_id->get_error_message(), 'featured_image_set' );
+			if ( null === $attachment_id ) {
+				$this->log_error( 'Failed to upload image from URL: No attachment ID returned.', 'featured_image_set' );
 				return $this;
 			}
 		} catch ( InvalidArgumentException $e ) {
@@ -437,15 +473,15 @@ class Post_Inserter {
 		}
 
 		// If we dont have a valid attached image ID, log an error and return.
-		if ( ! is_numeric( $attachment_id ) || $attachment_id <= 0 ) {
+		if ( $attachment_id <= 0 ) {
 			$this->log_error( 'Invalid attachment ID returned from image upload.', 'featured_image_set', true );
 			return $this;
 		}
 
 		// Set as featured image.
-		$result = set_post_thumbnail( $this->post_instance->ID, (int) $attachment_id );
+		$result = set_post_thumbnail( $this->post_instance->ID, $attachment_id );
 
-		if ( $result ) {
+		if ( true === $result ) {
 			// If the result is true, the featured image was set successfully.
 			$this->add_to_import_log(
 				sprintf( 'Set featured image for post ID %d from URL %s.', $this->post_instance->ID, esc_url( $image_url ) ),
