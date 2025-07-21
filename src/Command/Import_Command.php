@@ -173,7 +173,6 @@ class Import_Command extends WP_CLI_Command {
 	 * @return void
 	 */
 	private function set_params( array $args, array $assoc_args ) {
-		$this->urls_to_import = $args;
 
 		if ( isset( $assoc_args['dry-run'] ) ) {
 			$this->dry_run = true;

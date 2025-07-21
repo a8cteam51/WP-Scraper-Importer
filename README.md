@@ -87,9 +87,6 @@ wp scrapper-to-wp [URL...] [--options]
 # Import from CSV file (default: data/urls.csv)
 wp scrapper-to-wp --url-list=/path/to/urls.csv
 
-# Import specific URLs directly
-wp scrapper-to-wp https://example.com/page1 https://example.com/page2
-
 # Dry run to test without importing
 wp scrapper-to-wp --dry-run --url-list=/path/to/urls.csv
 ```
