@@ -1,6 +1,6 @@
 <?php declare( strict_types=1 );
 
-use A8C\SpecialProjects\Scaffold\Plugin;
+use A8C\SpecialProjects\ScrapperToWP\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @return  Plugin
  */
-function a8csp_scaffold_get_plugin_instance(): Plugin {
+function a8scp_scrapper_to_wp_get_plugin_instance(): Plugin {
 	return Plugin::get_instance();
 }
 
@@ -22,14 +22,14 @@ function a8csp_scaffold_get_plugin_instance(): Plugin {
 
 // region OTHERS
 
-$a8csp_scaffold_files = glob( constant( 'A8CSP_SCAFFOLD_DIR_PATH' ) . 'includes/*.php' );
-if ( false !== $a8csp_scaffold_files ) {
-	foreach ( $a8csp_scaffold_files as $a8csp_scaffold_file ) {
-		if ( 1 === preg_match( '#/includes/_#i', $a8csp_scaffold_file ) ) {
+$a8scp_scrapper_to_wp_files = glob( constant( 'A8CSP_SCRAPPER_TO_WP_DIR_PATH' ) . 'includes/*.php' );
+if ( false !== $a8scp_scrapper_to_wp_files ) {
+	foreach ( $a8scp_scrapper_to_wp_files as $a8scp_scrapper_to_wp_file ) {
+		if ( 1 === preg_match( '#/includes/_#i', $a8scp_scrapper_to_wp_file ) ) {
 			continue; // Ignore files prefixed with an underscore.
 		}
 
-		require_once $a8csp_scaffold_file;
+		require_once $a8scp_scrapper_to_wp_file;
 	}
 }
 
