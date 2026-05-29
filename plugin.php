@@ -15,8 +15,8 @@
  * Plugin URI:              https://wpspecialprojects.wordpress.com
  * Description:             A plugin that can take a collection of URLs, scrape the content and import them. Please note this is a starting point and will need to be edited for each site its used on!!!
  * Version:                 1.0.0
- * Requires at least:       6.7
- * Tested up to:            6.7
+ * Requires at least:       6.9
+ * Tested up to:            7.0
  * Requires PHP:            8.3
  * Author:                  WordPress.com Special Projects
  * Author URI:              https://wpspecialprojects.wordpress.com

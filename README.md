@@ -14,7 +14,7 @@ A flexible base plugin for scraping content from external websites and importing
 
 ## 📋 Requirements
 
-- WordPress 6.7+
+- WordPress 6.9+ (tested up to 7.0)
 - PHP 8.3+
 - WP-CLI (the importer is a WP-CLI command)
 - Composer (PHP dependencies)
