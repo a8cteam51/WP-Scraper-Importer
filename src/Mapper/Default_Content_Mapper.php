@@ -688,4 +688,21 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 		// CUSTOMIZE THIS: Extract custom fields, SEO data, or other metadata
 		return array(); // Return any additional meta data.
 	}
+
+	/**
+	 * Get the post date for the imported content.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string The post date (e.g., '2024-01-31 12:00:00') or empty string.
+	 */
+	public function get_post_date(): string {
+		// ============================================
+		// CUSTOMIZE POST DATE EXTRACTION HERE
+		// ============================================
+
+		// PLACEHOLDER: Returns empty string so WordPress uses the current time.
+		// CUSTOMIZE THIS: Parse the original publication date from the scraped content.
+		return '';
+	}
 }

@@ -166,6 +166,20 @@ abstract class Abstract_Content_Mapper {
 	abstract public function get_post_meta(): array;
 
 	/**
+	 * Get the post date for the imported content.
+	 *
+	 * Optional: override to preserve the original publication date. Return an
+	 * empty string to let WordPress use the current time.
+	 *
+	 * @since 1.0.0
+	 *
+	 * @return string The post date (e.g., '2024-01-31 12:00:00') or empty string.
+	 */
+	public function get_post_date(): string {
+		return '';
+	}
+
+	/**
 	 * Compile all the post configuration data into a structured array.
 	 *
 	 * This method gathers all the post configuration settings

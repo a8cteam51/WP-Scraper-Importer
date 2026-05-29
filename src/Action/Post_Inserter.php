@@ -37,6 +37,7 @@ class Post_Inserter {
 	 *  content: string,
 	 *  status: string,
 	 *  author: int,
+	 *  post_date: string,
 	 *  taxonomies: array<string, string[]>,
 	 *  meta: array<string, mixed>
 	 * }
@@ -85,16 +86,18 @@ class Post_Inserter {
 	 * @param string                  $content    The content of the post.
 	 * @param string                  $status     The status of the post (e.g., 'publish', 'draft').
 	 * @param integer                 $author     The ID of the author.
+	 * @param string                  $post_date  The date of the post (e.g., '2024-01-31 12:00:00'). Empty = current time.
 	 * @param array<string, string[]> $taxonomies An associative array of taxonomies and their terms.
 	 * @param array<string, mixed>    $meta       An associative array of post meta data.
 	 */
-	public function __construct( string $title = '', string $content = '', string $status = 'publish', int $author = 0, array $taxonomies = array(), array $meta = array() ) {
+	public function __construct( string $title = '', string $content = '', string $status = 'publish', int $author = 0, string $post_date = '', array $taxonomies = array(), array $meta = array() ) {
 
 		$this->post_data = array(
 			'title'      => sanitize_text_field( $title ),
 			'content'    => wp_kses_post( $content ),
 			'status'     => sanitize_key( $status ),
 			'author'     => absint( $author ),
+			'post_date'  => sanitize_text_field( $post_date ),
 			'taxonomies' => $taxonomies,
 			'meta'       => $meta,                // YOU WILL NEED TO SANITIZE THIS BASED ON YOUR NEEDS.
 		);
@@ -210,6 +213,7 @@ class Post_Inserter {
 			'post_author'  => $this->post_data['author'],
 			'post_type'    => $this->post_type,
 			'post_parent'  => $this->parent_id, // Set the parent ID if provided.
+			'post_date'    => $this->post_data['post_date'], // Empty = WP uses the current time.
 		);
 
 		// Insert the post into the database.
@@ -501,5 +505,14 @@ class Post_Inserter {
 	 */
 	public function has_post_instance(): bool {
 		return $this->post_instance instanceof \WP_Post;
+	}
+
+	/**
+	 * Get the ID of the inserted/updated post.
+	 *
+	 * @return int|null The post ID, or null if there is no post instance.
+	 */
+	public function get_post_id(): ?int {
+		return $this->post_instance instanceof \WP_Post ? $this->post_instance->ID : null;
 	}
 }

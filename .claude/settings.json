@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -n '/Tests.Integration Tests/,/Time:/p' /tmp/wpsi-green.log)"
+    ],
+    "additionalDirectories": [
+      "/tmp"
+    ]
+  }
+}

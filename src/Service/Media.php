@@ -27,6 +27,25 @@ defined( 'ABSPATH' ) || exit;
  */
 class Media {
 
+	/**
+	 * Cached media store used to dedupe uploads.
+	 *
+	 * @var Media_Store|null
+	 */
+	private static $media_store;
+
+	/**
+	 * Get the (cached) media store.
+	 *
+	 * @return Media_Store
+	 */
+	private static function media_store(): Media_Store {
+		if ( null === self::$media_store ) {
+			self::$media_store = new Media_Store();
+		}
+
+		return self::$media_store;
+	}
 
 	/**
 	 * Upload image from URL.
@@ -44,6 +63,13 @@ class Media {
 		if ( '' === $image_url ||
 			filter_var( $image_url, FILTER_VALIDATE_URL ) === false ) {
 			throw new InvalidArgumentException( 'Invalid image URL provided for upload.' );
+		}
+
+		// If we have already imported this URL, return the stored attachment ID.
+		$store    = self::media_store();
+		$existing = $store->get( $image_url );
+		if ( null !== $existing ) {
+			return $existing;
 		}
 
 		// List of allowed WP-CLI flags for media import
@@ -94,7 +120,12 @@ class Media {
 				throw new RuntimeException( 'Failed to import image from URL. Command output: ' . $attachment_id );
 			}
 
-			return (int) $attachment_id;
+			$attachment_id = (int) $attachment_id;
+
+			// Persist the URL => attachment ID mapping so we don't re-import it.
+			$store->set( $image_url, $attachment_id );
+
+			return $attachment_id;
 		} catch ( \Exception $e ) {
 			throw new RuntimeException( 'Failed to upload image from URL: ' . esc_attr( $e->getMessage() ) );
 		}

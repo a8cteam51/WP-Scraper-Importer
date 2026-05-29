@@ -1,0 +1,14 @@
+includes:
+    - vendor/a8cteam51/team51-configs/quality-assurance/phpstan.dist.neon
+
+parameters:
+    scanDirectories:
+        - vendor/wpackagist-plugin/woocommerce
+
+    ignoreErrors:
+        # Ignore require_once path issues for WordPress admin files
+        - '#Path in require_once\(\) ".*wp-admin/includes/file\.php" is not a file or it does not exist#'
+        # Ignore constant not found
+        - '#Constant A8CSP_SCRAPPER_TO_WP_DIR_PATH not found#'
+        # Ignore WP_CLI function not found
+        - '#make_progress_bar not found#'

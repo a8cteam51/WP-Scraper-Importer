@@ -14,10 +14,10 @@ namespace A8C\SpecialProjects\ScrapperToWP\Command;
 
 defined( 'ABSPATH' ) || exit;
 
+use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
 use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
 use A8C\SpecialProjects\ScrapperToWP\Action\Post_Inserter;
 use A8C\SpecialProjects\ScrapperToWP\Service\Progress_Tracker;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Default_Content_Mapper;
 use WP_CLI_Command;
 use Exception;
 use WP;
@@ -124,10 +124,6 @@ class Import_Command extends WP_CLI_Command {
 	 * : The number of links to scrape per request.
 	 * default: 25
 	 *
-	 * [--url-list=<url-list>]
-	 * : Path to the CSV file containing the URLs to scrape.
-	 * default: /path/to/urls.csv
-	 *
 	 * [--silent]
 	 * : Whether to run the command in silent mode.
 	 * default: false
@@ -137,7 +133,7 @@ class Import_Command extends WP_CLI_Command {
 	 * default: false
 	 *
 	 * ## EXAMPLES
-	 * wp scrapper-to-wp import --dry-run --delay=30 --per=25 --url-list=/path/to/urls.csv
+	 * wp scrapper-to-wp import --dry-run --delay=30 --per=25
 	 *
 	 * @since 1.0.0
 	 * @version 1.0.0
@@ -182,6 +178,8 @@ class Import_Command extends WP_CLI_Command {
 			$this->delay = (int) $assoc_args['delay'];
 		}
 
+		// Default the batch size from WP_Scraper; --per overrides it.
+		$this->links_per_request = WP_Scraper::get_batch_size();
 		if ( isset( $assoc_args['per'] ) ) {
 			$this->links_per_request = (int) $assoc_args['per'];
 		}
@@ -190,73 +188,16 @@ class Import_Command extends WP_CLI_Command {
 			$this->silent = true;
 		}
 
-		$csv_location = null;
-
-		// If we have a valid url-list, set the urls to import.
-		if ( isset( $assoc_args['url-list'] ) ) {
-			// Check the url-list is a valid file.
-			if ( ! file_exists( $assoc_args['url-list'] ) ) {
-				\WP_CLI::error( 'The url-list file does not exist.' );
-			}
-
-			// Check if the url-list is a valid CSV file.
-			if ( 0 === preg_match( '#\.csv$#i', $assoc_args['url-list'] ) ) {
-				\WP_CLI::error( 'The url-list file is not a valid CSV file.' );
-			}
-
-			$csv_location = $assoc_args['url-list'];
-		}
-
-		// If csv list is not set, use the fallback.
-		if ( null === $csv_location ) {
-			$csv_location = A8CSP_SCRAPPER_TO_WP_DIR_PATH . '/data/urls.csv';
-		}
-
-		$this->urls_to_import = $this->get_links_from_csv( $csv_location );
+		// Get the URLs to import from the configured provider (Noop by default).
+		$provider = WP_Scraper::get_url_provider();
+		$provider->setup();
+		$this->urls_to_import = $provider->get_urls();
+		$provider->teardown();
 
 		// If we have set to reset the progress, reset it.
 		if ( isset( $assoc_args['reset-progress'] ) && true === $assoc_args['reset-progress'] ) {
 			$this->progress_tracker->clear();
 		}
-	}
-
-	/**
-	 * Get all links from a CSV file.
-	 *
-	 * @param string $csv_file The path to the CSV file.
-	 *
-	 * @return array<int, string> The array of links.
-	 */
-	private function get_links_from_csv( string $csv_file ): array {
-		$links = array();
-
-		if ( ! file_exists( $csv_file ) ) {
-			\WP_CLI::warning( 'The CSV file does not exist.' );
-			return $links;
-		}
-
-		if ( ! is_readable( $csv_file ) ) {
-			\WP_CLI::warning( 'The CSV file is not readable.' );
-			return $links;
-		}
-
-		$handle = fopen( $csv_file, 'r' );  // phpcs:ignore
-		if ( false === $handle ) {
-			\WP_CLI::warning( 'The CSV file could not be opened.' );
-			return $links;
-		}
-
-		while ( ( $data = fgetcsv( $handle, 1000, ',' ) ) !== false ) { // phpcs:ignore
-			foreach ( $data as $link ) {
-				if ( is_string( $link ) && false !== filter_var( $link, FILTER_VALIDATE_URL ) ) {
-					$links[] = $link;
-				}
-			}
-		}
-
-		fclose( $handle );  // phpcs:ignore
-
-		return $links;
 	}
 
 	/**
@@ -397,7 +338,7 @@ class Import_Command extends WP_CLI_Command {
 	 * @throws Exception Thrown if there are errors during the dry run.
 	 */
 	public function process_as_dry_run( Content_Scrapper $content_scrapper ): void {
-		$mapper = new Default_Content_Mapper( $content_scrapper );
+		$mapper = WP_Scraper::get_content_mapper( $content_scrapper );
 
 		$title   = $mapper->get_title();
 		$content = $mapper->get_content();
@@ -509,7 +450,7 @@ class Import_Command extends WP_CLI_Command {
 		 */
 		// ====================================================================
 
-		$mapper = new Default_Content_Mapper( $content_scrapper );
+		$mapper = WP_Scraper::get_content_mapper( $content_scrapper );
 
 		$title   = $mapper->get_title();
 		$content = $mapper->get_content();
@@ -522,12 +463,25 @@ class Import_Command extends WP_CLI_Command {
 		$post_parent    = $mapper->get_post_parent();
 		$featured_image = $mapper->get_featured_image();
 		$meta           = $mapper->get_post_meta();
+		$post_date      = $mapper->get_post_date();
+
+		// Fall back to the WP_Scraper defaults when the mapper supplies nothing.
+		if ( $author <= 0 ) {
+			$author = WP_Scraper::get_default_user();
+		}
+		if ( '' === $post_type ) {
+			$post_type = WP_Scraper::get_post_type();
+		}
+		if ( '' === $post_status ) {
+			$post_status = WP_Scraper::get_post_status();
+		}
 
 		$inserter = new Post_Inserter(
 			$title,
 			$content,
 			$post_status,
 			$author,
+			$post_date,
 			$terms,
 			$meta
 		);

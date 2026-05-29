@@ -19,18 +19,3 @@ function a8scp_scrapper_to_wp_get_plugin_instance(): Plugin {
 }
 
 // endregion
-
-// region OTHERS
-
-$a8scp_scrapper_to_wp_files = glob( constant( 'A8CSP_SCRAPPER_TO_WP_DIR_PATH' ) . 'includes/*.php' );
-if ( false !== $a8scp_scrapper_to_wp_files ) {
-	foreach ( $a8scp_scrapper_to_wp_files as $a8scp_scrapper_to_wp_file ) {
-		if ( 1 === preg_match( '#/includes/_#i', $a8scp_scrapper_to_wp_file ) ) {
-			continue; // Ignore files prefixed with an underscore.
-		}
-
-		require_once $a8scp_scrapper_to_wp_file;
-	}
-}
-
-// endregion

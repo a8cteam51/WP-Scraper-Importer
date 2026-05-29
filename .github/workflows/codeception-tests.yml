@@ -51,7 +51,7 @@ jobs:
       - name: Install dependencies
         run: |
           composer run-script packages-install
-          npm ci
+          npm install
           docker run -d --shm-size="2g" --net=host --name="selenium-chromium" selenium/standalone-chromium:latest
 
       - name: Prepare testing environment variables
