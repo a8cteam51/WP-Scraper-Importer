@@ -17,8 +17,8 @@
 		<properties>
 			<property name="prefixes" type="array">
 				<element value="a8csp_"/>
-				<element value="a8csp_scaffold_"/>
-				<element value="A8C\SpecialProjects\Scaffold"/>
+				<element value="a8scp_scraper_to_wp_"/>
+				<element value="A8C\SpecialProjects\ScraperToWP"/>
 			</property>
 		</properties>
 	</rule>

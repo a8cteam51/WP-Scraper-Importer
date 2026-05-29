@@ -1,9 +1,24 @@
 {
-  "phpVersion": "8.3",
-  "mappings": {
-    "wp-content/plugins/a8csp-plugin-scaffold": "."
-  },
-  "lifecycleScripts": {
-    "afterStart": "vendor/a8cteam51/team51-configs/docker/wp-env-install-pdo_mysql.sh"
-  }
+	"core": null,
+	"phpVersion": "8.3",
+	"plugins": [ "." ],
+	"port": 57897,
+	"testsPort": 57898,
+	"config": {
+		"WP_DEBUG": true,
+		"WP_DEBUG_LOG": true,
+		"SCRIPT_DEBUG": true
+	},
+	"env": {
+		"tests": {
+			"config": {
+				"WP_DEBUG": true,
+				"WP_DEBUG_LOG": true,
+				"SCRIPT_DEBUG": true
+			}
+		}
+	},
+	"lifecycleScripts": {
+		"afterStart": "bash ./bin/wp-env-after-start.sh"
+	}
 }
