@@ -1,6 +1,10 @@
 # Created by https://www.toptal.com/developers/gitignore/api/macos,linux,windows,node,yarn,composer,phpstorm+all,visualstudiocode,sublimetext
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,windows,node,yarn,composer,phpstorm+all,visualstudiocode,sublimetext
 
+### Project ###
+# Local reference copy of the descendant plugin — not part of this plugin.
+/temp/
+
 ### Composer ###
 composer.phar
 /vendor/
