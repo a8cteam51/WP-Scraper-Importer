@@ -6,7 +6,7 @@
  * URL. Point FILE_PATH at your CSV (or extend this class and override the
  * constant) then register it with WP_Scraper::set_url_provider( CSV_URL_Provider::class ).
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Provider
  * @since       1.0.0
  * @version     1.0.0
@@ -14,7 +14,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Provider;
+namespace A8C\SpecialProjects\ScraperToWP\Provider;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,7 +28,7 @@ class CSV_URL_Provider implements URL_Provider {
 	 *
 	 * @var string
 	 */
-	const FILE_PATH = A8CSP_SCRAPPER_TO_WP_DIR_PATH . 'data/urls.csv';
+	const FILE_PATH = A8CSP_SCRAPER_TO_WP_DIR_PATH . 'data/urls.csv';
 
 	/**
 	 * {@inheritDoc}
@@ -65,31 +65,37 @@ class CSV_URL_Provider implements URL_Provider {
 			return $urls;
 		}
 
-		// Column A of each row is the URL.
+		// Page size to collect: per_page takes precedence, else limit, else unbounded (0).
+		$take    = $per_page > 0 ? $per_page : $limit;
+		$skipped = 0;
+
+		// Stream the rows rather than loading the whole file: apply the filter and
+		// offset/limit as we go, and stop reading as soon as the page is full.
 		while ( ( $row = fgetcsv( $handle, 1000, ',' ) ) !== false ) { // phpcs:ignore
-			$url = $row[0] ?? '';
-			if ( is_string( $url ) && false !== filter_var( $url, FILTER_VALIDATE_URL ) ) {
-				$urls[] = $url;
+			$url = $row[0] ?? ''; // Column A of each row is the URL.
+
+			if ( ! is_string( $url ) || false === filter_var( $url, FILTER_VALIDATE_URL ) ) {
+				continue;
+			}
+			if ( null !== $filter && ! $filter( $url ) ) {
+				continue;
+			}
+
+			// Skip the first $offset matching rows.
+			if ( $skipped < $offset ) {
+				++$skipped;
+				continue;
+			}
+
+			$urls[] = $url;
+
+			// Stop early once the requested page/limit is satisfied.
+			if ( $take > 0 && count( $urls ) >= $take ) {
+				break;
 			}
 		}
 
 		fclose( $handle ); // phpcs:ignore
-
-		// Apply the optional caller-supplied filter.
-		if ( null !== $filter ) {
-			$urls = array_values( array_filter( $urls, $filter ) );
-		}
-
-		// Apply a hard cap on the total number of URLs to consider.
-		if ( $limit > 0 ) {
-			$urls = array_slice( $urls, 0, $limit );
-		}
-
-		// Apply offset / per-page slicing.
-		$length = $per_page > 0 ? $per_page : null;
-		if ( $offset > 0 || null !== $length ) {
-			$urls = array_slice( $urls, $offset, $length );
-		}
 
 		return $urls;
 	}

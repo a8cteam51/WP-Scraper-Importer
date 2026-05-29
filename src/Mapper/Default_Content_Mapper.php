@@ -23,10 +23,10 @@
  * TO EXTEND THIS CLASS:
  * 1. Create a new class that extends Default_Content_Mapper
  * 2. Override only the methods you need to customize
- * 3. Use $this->content_scrapper->get_content() to access the raw HTML
+ * 3. Use $this->content_scraper->get_content() to access the raw HTML
  * 4. Use WordPress functions like wp_strip_all_tags(), wp_trim_words(), etc.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Mapper
  * @since       1.0.0
  * @version     1.0.0
@@ -34,9 +34,9 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Mapper;
+namespace A8C\SpecialProjects\ScraperToWP\Mapper;
 
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -56,14 +56,14 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * ========================================
 	 *
 	 * EXAMPLE 1: Extract from H1 tag instead of <title>
-	 * $processor = new \WP_HTML_Tag_Processor( $this->content_scrapper->get_content() );
+	 * $processor = new \WP_HTML_Tag_Processor( $this->content_scraper->get_content() );
 	 * if ( $processor->next_tag( 'h1' ) ) {
 	 *     return $processor->get_modifiable_text();
 	 * }
 	 *
 	 * EXAMPLE 2: Extract from meta property
 	 * $dom = new \DOMDocument();
-	 * $dom->loadHTML( $this->content_scrapper->get_content() );
+	 * $dom->loadHTML( $this->content_scraper->get_content() );
 	 * $xpath = new \DOMXPath( $dom );
 	 * $title_node = $xpath->query('//meta[@property="og:title"]/@content');
 	 * if ( $title_node->length ) {
@@ -88,9 +88,9 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * @return string The extracted page title.
 	 */
 	public function get_title(): string {
-		// If the content scrapper has a title, return it.
-		if ( $this->content_scrapper->is_scraped() ) {
-			$processor = new \WP_HTML_Tag_Processor( $this->content_scrapper->get_content() );
+		// If the content scraper has a title, return it.
+		if ( $this->content_scraper->is_scraped() ) {
+			$processor = new \WP_HTML_Tag_Processor( $this->content_scraper->get_content() );
 			if ( $processor->next_tag( array( 'tag_name' => 'title' ) ) ) {
 				$processor->get_tag();
 				return $processor->get_modifiable_text();
@@ -145,11 +145,11 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * @return string The extracted page content.
 	 */
 	public function get_content(): string {
-		// If the content scrapper has content, extract the body content.
-		if ( $this->content_scrapper->is_scraped() ) {
+		// If the content scraper has content, extract the body content.
+		if ( $this->content_scraper->is_scraped() ) {
 			libxml_use_internal_errors( true );
 			$dom = new \DOMDocument();
-			$dom->loadHTML( $this->content_scrapper->get_content(), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
+			$dom->loadHTML( $this->content_scraper->get_content(), LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD );
 
 			// Extract the content from the body tag.
 			$body = $dom->getElementsByTagName( 'main' )->item( 0 ); // <--- THIS IS WHERE YOU CAN CHANGE THE TAG NAME TO EXTRACT THE CONTENT FROM.
@@ -200,7 +200,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * }
 	 *
 	 * EXAMPLE 3: Map based on URL domain
-	 * $url = $this->content_scrapper->get_url();
+	 * $url = $this->content_scraper->get_url();
 	 * $domain = parse_url( $url, PHP_URL_HOST );
 	 * $author_mapping = [
 	 *     'blog1.com' => 2,
@@ -232,7 +232,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 		// ============================================
 		// ADD YOUR OWN AUTHOR EXTRACTION LOGIC HERE
 		// ============================================
-		$content = $this->content_scrapper->get_content();
+		$content = $this->content_scraper->get_content();
 
 		// PLACEHOLDER: Always returns user ID 1 (admin)
 		// CUSTOMIZE THIS: Extract author info from the scraped content
@@ -291,7 +291,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * }
 	 *
 	 * EXAMPLE 4: Map based on URL structure
-	 * $url = $this->content_scrapper->get_url();
+	 * $url = $this->content_scraper->get_url();
 	 * if ( strpos( $url, '/technology/' ) !== false ) {
 	 *     return [ 'category' => ['Technology'], 'post_tag' => [] ];
 	 * }
@@ -323,7 +323,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 		// ============================================
 		// ADD YOUR OWN TERMS EXTRACTION LOGIC HERE
 		// ============================================
-		$content = $this->content_scrapper->get_content();
+		$content = $this->content_scraper->get_content();
 
 		// PLACEHOLDER: Returns empty arrays
 		// CUSTOMIZE THIS: Extract categories, tags, or custom taxonomy terms
@@ -347,8 +347,8 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * $nodes_html = preg_replace('/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/mi', '', $nodes_html);
 	 *
 	 * EXAMPLE 2: Convert relative URLs to absolute
-	 * $base_url = parse_url( $this->content_scrapper->get_url(), PHP_URL_SCHEME ) . '://' .
-	 *             parse_url( $this->content_scrapper->get_url(), PHP_URL_HOST );
+	 * $base_url = parse_url( $this->content_scraper->get_url(), PHP_URL_SCHEME ) . '://' .
+	 *             parse_url( $this->content_scraper->get_url(), PHP_URL_HOST );
 	 * $nodes_html = preg_replace('/src="\//', 'src="' . $base_url . '/', $nodes_html);
 	 * $nodes_html = preg_replace('/href="\//', 'href="' . $base_url . '/', $nodes_html);
 	 *
@@ -410,12 +410,12 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * ========================================
 	 *
 	 * EXAMPLE 1: Different status based on content quality
-	 * $content = $this->content_scrapper->get_content();
+	 * $content = $this->content_scraper->get_content();
 	 * $word_count = str_word_count( wp_strip_all_tags( $content ) );
 	 * return $word_count > 300 ? 'publish' : 'draft';
 	 *
 	 * EXAMPLE 2: Status based on URL pattern
-	 * $url = $this->content_scrapper->get_url();
+	 * $url = $this->content_scraper->get_url();
 	 * if ( strpos( $url, '/draft/' ) !== false ) {
 	 *     return 'draft';
 	 * }
@@ -451,7 +451,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * ========================================
 	 *
 	 * EXAMPLE 1: Different post types based on URL structure
-	 * $url = $this->content_scrapper->get_url();
+	 * $url = $this->content_scraper->get_url();
 	 * if ( strpos( $url, '/products/' ) !== false ) {
 	 *     return 'product';
 	 * } elseif ( strpos( $url, '/events/' ) !== false ) {
@@ -460,7 +460,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * return 'post';
 	 *
 	 * EXAMPLE 2: Post type based on content indicators
-	 * $content = $this->content_scrapper->get_content();
+	 * $content = $this->content_scraper->get_content();
 	 * if ( strpos( $content, 'class="recipe"' ) !== false ) {
 	 *     return 'recipe';
 	 * }
@@ -495,7 +495,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * ========================================
 	 *
 	 * EXAMPLE 1: Set parent based on URL structure
-	 * $url = $this->content_scrapper->get_url();
+	 * $url = $this->content_scraper->get_url();
 	 * if ( strpos( $url, '/documentation/' ) !== false ) {
 	 *     $parent = get_page_by_path( 'documentation' );
 	 *     return $parent ? $parent->ID : 0;
@@ -545,7 +545,7 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 * ========================================
 	 *
 	 * EXAMPLE 1: Extract from meta tags (Open Graph)
-	 * $content = $this->content_scrapper->get_content();
+	 * $content = $this->content_scraper->get_content();
 	 * if ( preg_match('/<meta property="og:image" content="([^"]+)"/i', $content, $matches) ) {
 	 *     return $matches[1];
 	 * }
@@ -565,8 +565,8 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 *     if ( ! empty( $src ) ) {
 	 *         // Convert relative URL to absolute if needed
 	 *         if ( strpos( $src, 'http' ) !== 0 ) {
-	 *             $base_url = parse_url( $this->content_scrapper->get_url(), PHP_URL_SCHEME ) . '://' .
-	 *                        parse_url( $this->content_scrapper->get_url(), PHP_URL_HOST );
+	 *             $base_url = parse_url( $this->content_scraper->get_url(), PHP_URL_SCHEME ) . '://' .
+	 *                        parse_url( $this->content_scraper->get_url(), PHP_URL_HOST );
 	 *             $src = $base_url . $src;
 	 *         }
 	 *         return $src;
@@ -611,13 +611,13 @@ class Default_Content_Mapper extends Abstract_Content_Mapper {
 	 *
 	 * EXAMPLE 1: Store original URL and import date
 	 * return [
-	 *     'original_url' => $this->content_scrapper->get_url(),
+	 *     'original_url' => $this->content_scraper->get_url(),
 	 *     'import_date' => current_time( 'mysql' ),
 	 *     'import_source' => 'content_scraper'
 	 * ];
 	 *
 	 * EXAMPLE 2: Extract custom fields from content
-	 * $content = $this->content_scrapper->get_content();
+	 * $content = $this->content_scraper->get_content();
 	 * $meta = [];
 	 *
 	 * // Extract price from content

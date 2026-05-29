@@ -2,7 +2,7 @@
 /**
  * Integration tests for the scrape -> map stack.
  *
- * The remote HTTP call inside Content_Scrapper::follow_redirects() is mocked via
+ * The remote HTTP call inside Content_Scraper::follow_redirects() is mocked via
  * the `pre_http_request` filter, returning a sample HTML page. This lets us drive
  * the full scraper + mapper stack without any network access.
  */
@@ -13,21 +13,23 @@ namespace Tests\Integration;
 
 use lucatume\WPBrowser\TestCase\WPTestCase;
 use Tests\Support\Sample_Content_Mapper;
-use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Default_Content_Mapper;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Abstract_Content_Mapper;
+use A8C\SpecialProjects\ScraperToWP\WP_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Default_Content_Mapper;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Abstract_Content_Mapper;
 
 /**
- * @group scrapper
+ * @group scraper
  */
-class Content_Scrapper_Test extends WPTestCase {
+class Content_Scraper_Test extends WPTestCase {
 
 	/**
 	 * Remove any mocked HTTP responses after each test.
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'pre_http_request' );
+		// Restore the default mapper — test_wp_scraper_resolves_custom_mapper mutates this static.
+		WP_Scraper::set_content_mapper( Default_Content_Mapper::class );
 		parent::tearDown();
 	}
 
@@ -87,14 +89,14 @@ class Content_Scrapper_Test extends WPTestCase {
 		$html = $this->sample_html();
 		$this->mock_http( fn( $url ) => $this->http_response( 200, $html ) );
 
-		$scrapper = new Content_Scrapper( 'https://example.test/sample' );
-		$scrapper->process();
+		$scraper = new Content_Scraper( 'https://example.test/sample' );
+		$scraper->process();
 
-		$this->assertTrue( $scrapper->is_scraped() );
-		$this->assertFalse( $scrapper->has_errors() );
-		$this->assertStringContainsString( 'Sample Heading', $scrapper->get_content() );
-		$this->assertSame( 'https://example.test/sample', $scrapper->get_url() );
-		$this->assertFalse( $scrapper->had_redirected() );
+		$this->assertTrue( $scraper->is_scraped() );
+		$this->assertFalse( $scraper->has_errors() );
+		$this->assertStringContainsString( 'Sample Heading', $scraper->get_content() );
+		$this->assertSame( 'https://example.test/sample', $scraper->get_url() );
+		$this->assertFalse( $scraper->had_redirected() );
 	}
 
 	/**
@@ -104,10 +106,10 @@ class Content_Scrapper_Test extends WPTestCase {
 		$html = $this->sample_html();
 		$this->mock_http( fn( $url ) => $this->http_response( 200, $html ) );
 
-		$scrapper = new Content_Scrapper( 'https://example.test/sample' );
-		$scrapper->process();
+		$scraper = new Content_Scraper( 'https://example.test/sample' );
+		$scraper->process();
 
-		$mapper = new Default_Content_Mapper( $scrapper );
+		$mapper = new Default_Content_Mapper( $scraper );
 
 		$this->assertSame( 'Sample Imported Page', $mapper->get_title() );
 
@@ -125,10 +127,10 @@ class Content_Scrapper_Test extends WPTestCase {
 		$html = $this->sample_html();
 		$this->mock_http( fn( $url ) => $this->http_response( 200, $html ) );
 
-		$scrapper = new Content_Scrapper( 'https://example.test/sample' );
-		$scrapper->process();
+		$scraper = new Content_Scraper( 'https://example.test/sample' );
+		$scraper->process();
 
-		$mapper = new Sample_Content_Mapper( $scrapper );
+		$mapper = new Sample_Content_Mapper( $scraper );
 
 		// Title now comes from the <h1>, not the <title>.
 		$this->assertSame( 'Sample Heading', $mapper->get_title() );
@@ -145,11 +147,11 @@ class Content_Scrapper_Test extends WPTestCase {
 	public function test_wp_scraper_resolves_custom_mapper(): void {
 		$this->mock_http( fn( $url ) => $this->http_response( 200, $this->sample_html() ) );
 
-		$scrapper = new Content_Scrapper( 'https://example.test/sample' );
-		$scrapper->process();
+		$scraper = new Content_Scraper( 'https://example.test/sample' );
+		$scraper->process();
 
 		WP_Scraper::set_content_mapper( Sample_Content_Mapper::class );
-		$mapper = WP_Scraper::get_content_mapper( $scrapper );
+		$mapper = WP_Scraper::get_content_mapper( $scraper );
 
 		$this->assertInstanceOf( Sample_Content_Mapper::class, $mapper );
 		$this->assertInstanceOf( Abstract_Content_Mapper::class, $mapper );
@@ -170,12 +172,12 @@ class Content_Scrapper_Test extends WPTestCase {
 			}
 		);
 
-		$scrapper = new Content_Scrapper( 'https://example.test/old' );
-		$scrapper->process();
+		$scraper = new Content_Scraper( 'https://example.test/old' );
+		$scraper->process();
 
-		$this->assertTrue( $scrapper->is_scraped() );
-		$this->assertTrue( $scrapper->had_redirected() );
-		$this->assertSame( 'https://example.test/new', $scrapper->get_final_url() );
-		$this->assertStringContainsString( 'Sample Heading', $scrapper->get_content() );
+		$this->assertTrue( $scraper->is_scraped() );
+		$this->assertTrue( $scraper->had_redirected() );
+		$this->assertSame( 'https://example.test/new', $scraper->get_final_url() );
+		$this->assertStringContainsString( 'Sample Heading', $scraper->get_content() );
 	}
 }

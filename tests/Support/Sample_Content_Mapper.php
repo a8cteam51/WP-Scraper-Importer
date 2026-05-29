@@ -11,7 +11,7 @@ declare( strict_types=1 );
 
 namespace Tests\Support;
 
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Default_Content_Mapper;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Default_Content_Mapper;
 
 /**
  * Custom mapper fixture.
@@ -27,7 +27,7 @@ class Sample_Content_Mapper extends Default_Content_Mapper {
 		// --- WP HTML API example ---
 		// Tag_Processor only stops on tags, so to read an element's inner text we
 		// use WP_HTML_Processor and accumulate the #text tokens between <h1>…</h1>.
-		$html = $this->content_scrapper->get_content();
+		$html = $this->content_scraper->get_content();
 
 		$processor = method_exists( '\WP_HTML_Processor', 'create_full_parser' )
 			? \WP_HTML_Processor::create_full_parser( $html )
@@ -69,7 +69,7 @@ class Sample_Content_Mapper extends Default_Content_Mapper {
 	public function get_content(): string {
 		libxml_use_internal_errors( true );
 		$dom = new \DOMDocument();
-		$dom->loadHTML( $this->content_scrapper->get_content() );
+		$dom->loadHTML( $this->content_scraper->get_content() );
 		libxml_clear_errors();
 
 		$main = $dom->getElementsByTagName( 'main' )->item( 0 );

@@ -1,8 +1,8 @@
 <?php declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP;
+namespace A8C\SpecialProjects\ScraperToWP;
 
-use A8C\SpecialProjects\ScrapperToWP\Command\Import_Command;
+use A8C\SpecialProjects\ScraperToWP\Command\Import_Command;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -119,7 +119,7 @@ class Plugin {
 		}
 
 		// Register the import command.
-		\WP_CLI::add_command( 'scrapper-to-wp', Import_Command::class, );
+		\WP_CLI::add_command( 'scraper-to-wp', Import_Command::class, );
 	}
 
 	/**
@@ -133,7 +133,7 @@ class Plugin {
 	public function maybe_initialize(): void {
 		$is_active = $this->is_active();
 		if ( is_wp_error( $is_active ) ) {
-			a8scp_scrapper_to_wp_output_requirements_error( $is_active );
+			a8scp_scraper_to_wp_output_requirements_error( $is_active );
 			return;
 		}
 

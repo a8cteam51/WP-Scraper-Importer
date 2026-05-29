@@ -11,7 +11,7 @@ declare( strict_types=1 );
 
 namespace Tests\Support;
 
-use A8C\SpecialProjects\ScrapperToWP\Provider\URL_Provider;
+use A8C\SpecialProjects\ScraperToWP\Provider\URL_Provider;
 
 /**
  * Fixed-list URL provider fixture.

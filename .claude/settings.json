@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(sed -n '/Tests.Integration Tests/,/Time:/p' /tmp/wpsi-green.log)"
+      "Bash(sed -n '/Tests.Integration Tests/,/Time:/p' /tmp/wpsi-green.log)",
+      "Bash(xargs -0 sed -i -e 's/Scrapper/Scraper/g' -e 's/scrapper/scraper/g' -e 's/SCRAPPER/SCRAPER/g')"
     ],
     "additionalDirectories": [
       "/tmp"

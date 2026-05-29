@@ -11,21 +11,21 @@
  * Nothing is configured out of the box, so the URL provider resolves to the
  * Noop provider and the post defaults fall back to the values below.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @since       1.0.0
  * @version     1.0.0
  */
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP;
+namespace A8C\SpecialProjects\ScraperToWP;
 
 use InvalidArgumentException;
-use A8C\SpecialProjects\ScrapperToWP\Provider\URL_Provider;
-use A8C\SpecialProjects\ScrapperToWP\Provider\Noop_URL_Provider;
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Abstract_Content_Mapper;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Default_Content_Mapper;
+use A8C\SpecialProjects\ScraperToWP\Provider\URL_Provider;
+use A8C\SpecialProjects\ScraperToWP\Provider\Noop_URL_Provider;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Abstract_Content_Mapper;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Default_Content_Mapper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -226,22 +226,22 @@ class WP_Scraper {
 	}
 
 	/**
-	 * Resolve the configured content mapper for a scrapper.
+	 * Resolve the configured content mapper for a scraper.
 	 *
 	 * Returns the Default_Content_Mapper when none has been registered.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
+	 * @param Content_Scraper $content_scraper The content scraper instance.
 	 *
 	 * @return Abstract_Content_Mapper
 	 *
 	 * @throws InvalidArgumentException When the registered class does not extend Abstract_Content_Mapper.
 	 */
-	public static function get_content_mapper( Content_Scrapper $content_scrapper ): Abstract_Content_Mapper {
+	public static function get_content_mapper( Content_Scraper $content_scraper ): Abstract_Content_Mapper {
 		$mapper_class = self::$content_mapper ?? Default_Content_Mapper::class;
 
-		$mapper = new $mapper_class( $content_scrapper );
+		$mapper = new $mapper_class( $content_scraper );
 
 		if ( ! $mapper instanceof Abstract_Content_Mapper ) {
 			throw new InvalidArgumentException(

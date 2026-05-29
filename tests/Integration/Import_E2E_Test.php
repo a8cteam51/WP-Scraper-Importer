@@ -16,9 +16,9 @@ namespace Tests\Integration;
 use WP_Post;
 use lucatume\WPBrowser\TestCase\WPTestCase;
 use Tests\Support\Test_URL_Provider;
-use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
-use A8C\SpecialProjects\ScrapperToWP\Action\Post_Inserter;
+use A8C\SpecialProjects\ScraperToWP\WP_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Action\Post_Inserter;
 
 /**
  * @group e2e
@@ -62,6 +62,9 @@ class Import_E2E_Test extends WPTestCase {
 	 */
 	public function tearDown(): void {
 		remove_all_filters( 'pre_http_request' );
+		// Restore WP_Scraper defaults — the scaffold config mutates this static state.
+		WP_Scraper::set_url_provider( \A8C\SpecialProjects\ScraperToWP\Provider\Noop_URL_Provider::class );
+		WP_Scraper::set_content_mapper( \A8C\SpecialProjects\ScraperToWP\Mapper\Default_Content_Mapper::class );
 		parent::tearDown();
 	}
 
@@ -81,12 +84,12 @@ class Import_E2E_Test extends WPTestCase {
 
 		foreach ( $urls as $url ) {
 			// 2. Scrape (HTTP is mocked to serve the sample page).
-			$scrapper = new Content_Scrapper( $url );
-			$scrapper->process();
-			$this->assertFalse( $scrapper->has_errors(), 'Scraping should not error.' );
+			$scraper = new Content_Scraper( $url );
+			$scraper->process();
+			$this->assertFalse( $scraper->has_errors(), 'Scraping should not error.' );
 
 			// 3. Map via the registered custom mapper.
-			$mapper = WP_Scraper::get_content_mapper( $scrapper );
+			$mapper = WP_Scraper::get_content_mapper( $scraper );
 
 			$author = $mapper->get_author();
 			if ( $author <= 0 ) {

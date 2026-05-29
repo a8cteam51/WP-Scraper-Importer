@@ -13,8 +13,8 @@ declare( strict_types=1 );
 namespace Tests\Integration;
 
 use lucatume\WPBrowser\TestCase\WPTestCase;
-use A8C\SpecialProjects\ScrapperToWP\Service\Media;
-use A8C\SpecialProjects\ScrapperToWP\Service\Media_Store;
+use A8C\SpecialProjects\ScraperToWP\Service\Media;
+use A8C\SpecialProjects\ScraperToWP\Service\Media_Store;
 
 /**
  * @group media

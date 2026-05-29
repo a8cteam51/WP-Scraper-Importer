@@ -10,12 +10,12 @@
  * In a real clone the provider/mapper live in src/ (PSR-4). Here they're test
  * doubles under tests/Support, but the registration is identical.
  *
- * @package A8CSP_Scrapper_to_WP
+ * @package A8CSP_Scraper_to_WP
  */
 
 declare( strict_types=1 );
 
-use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
+use A8C\SpecialProjects\ScraperToWP\WP_Scraper;
 use Tests\Support\Test_URL_Provider;
 use Tests\Support\Sample_Content_Mapper;
 

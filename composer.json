@@ -37,7 +37,7 @@
 
     "autoload": {
         "psr-4": {
-            "A8C\\SpecialProjects\\ScrapperToWP\\": "src/"
+            "A8C\\SpecialProjects\\ScraperToWP\\": "src/"
         }
     },
     "autoload-dev": {

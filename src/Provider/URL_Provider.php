@@ -10,7 +10,7 @@
  * arguments, so any setup (opening a database connection, reading a file) must
  * happen in setup() and be released in teardown().
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Provider
  * @since       1.0.0
  * @version     1.0.0
@@ -18,7 +18,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Provider;
+namespace A8C\SpecialProjects\ScraperToWP\Provider;
 
 defined( 'ABSPATH' ) || exit;
 

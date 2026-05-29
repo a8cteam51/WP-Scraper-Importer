@@ -4,7 +4,7 @@
  *
  * This class is responsible for handling media uploads and featured images.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Service
  * @since       1.0.0
  * @version     1.0.0
@@ -12,7 +12,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Service;
+namespace A8C\SpecialProjects\ScraperToWP\Service;
 
 use RuntimeException;
 use InvalidArgumentException;

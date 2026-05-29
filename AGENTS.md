@@ -8,11 +8,11 @@ A **base/scaffold plugin** for scraping external pages and importing them as Wor
 
 ## How it works (the pipeline)
 
-`Import_Command` (`wp scrapper-to-wp`) orchestrates:
+`Import_Command` (`wp scraper-to-wp`) orchestrates:
 
 1. `WP_Scraper::get_url_provider()` → a `URL_Provider`; `setup()` → `get_urls(limit, offset, per_page, filter)` → `teardown()`.
-2. For each URL: `new Content_Scrapper($url)` → `process()` (fetches HTML, follows redirects via `wp_remote_get`).
-3. `WP_Scraper::get_content_mapper($scrapper)` → an `Abstract_Content_Mapper` that extracts `get_title()/get_content()/get_author()/get_terms()/get_post_*()/get_post_date()`.
+2. For each URL: `new Content_Scraper($url)` → `process()` (fetches HTML, follows redirects via `wp_remote_get`).
+3. `WP_Scraper::get_content_mapper($scraper)` → an `Abstract_Content_Mapper` that extracts `get_title()/get_content()/get_author()/get_terms()/get_post_*()/get_post_date()`.
 4. `Import_Command` applies `WP_Scraper` fallbacks (author/post_type/post_status) only when the mapper returns nothing.
 5. `new Post_Inserter(... post_date ...)` → `create()` writes the post; `get_post_id()` returns the new ID.
 6. `Media::from_url($url)` imports images and dedupes via `Media_Store` (URL→ID map, persisted under `uploads/wp-scraper-importer/`).
@@ -22,7 +22,7 @@ A **base/scaffold plugin** for scraping external pages and importing them as Wor
 - `src/WP_Scraper.php` — static config facade. The single place a clone wires things up.
 - `src/Provider/URL_Provider.php` — interface: `setup()`, `get_urls()`, `teardown()`. `Noop_URL_Provider` (default), `CSV_URL_Provider` (example, `FILE_PATH` const, uses `static::` so subclasses can override).
 - `src/Mapper/{Abstract,Default}_Content_Mapper.php` — extraction. `get_post_date()` is concrete on the abstract (default `''`) so it's an optional override, not a BC break.
-- `src/Action/{Content_Scrapper,Post_Inserter}.php`
+- `src/Action/{Content_Scraper,Post_Inserter}.php`
 - `src/Service/{Media,Media_Store,Progress_Tracker}.php`
 - `bin/wp-env-after-start.sh` — wp-env `afterStart`: installs `pdo_mysql` into *this* instance's container.
 
@@ -54,7 +54,7 @@ You've cloned this repo as your scaffold, so add the class straight into `src/` 
 ```php
 <?php
 // src/Provider/Sitemap_URL_Provider.php
-namespace A8C\SpecialProjects\ScrapperToWP\Provider;
+namespace A8C\SpecialProjects\ScraperToWP\Provider;
 
 /**
  * Reads URLs from an XML sitemap. (URL_Provider is in this same namespace, so no `use`.)
@@ -124,13 +124,13 @@ For the simplest case — a fixed list or a CSV — just subclass the shipped `C
 
 ### Step 2 — register it
 
-This repo *is* the plugin, so register inline in **`plugin.php`**, right after the `vendor/autoload.php` require (around line 67). The autoloader is live by then, so `WP_Scraper` and your `src/` classes resolve. No hook, no separate file — the provider isn't instantiated until the `wp scrapper-to-wp` command runs, so storing the class names here is plenty early.
+This repo *is* the plugin, so register inline in **`plugin.php`**, right after the `vendor/autoload.php` require (around line 67). The autoloader is live by then, so `WP_Scraper` and your `src/` classes resolve. No hook, no separate file — the provider isn't instantiated until the `wp scraper-to-wp` command runs, so storing the class names here is plenty early.
 
 ```php
 // plugin.php — immediately after: require_once … '/vendor/autoload.php';
-use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
-use A8C\SpecialProjects\ScrapperToWP\Provider\Sitemap_URL_Provider;
-use A8C\SpecialProjects\ScrapperToWP\Mapper\Article_Mapper;
+use A8C\SpecialProjects\ScraperToWP\WP_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Provider\Sitemap_URL_Provider;
+use A8C\SpecialProjects\ScraperToWP\Mapper\Article_Mapper;
 
 WP_Scraper::set_url_provider( Sitemap_URL_Provider::class );
 WP_Scraper::set_content_mapper( Article_Mapper::class );
@@ -141,20 +141,20 @@ WP_Scraper::set_content_mapper( Article_Mapper::class );
 ### Step 3 — run
 
 ```bash
-wp scrapper-to-wp --dry-run   # verify the URLs/extraction first
-wp scrapper-to-wp             # real import
+wp scraper-to-wp --dry-run   # verify the URLs/extraction first
+wp scraper-to-wp             # real import
 ```
 
 That's the whole loop. `get_url_provider()` resolves your class (falling back to `Noop_URL_Provider` if none is set), and the command scrapes + maps + inserts each URL.
 
 ## Using it: adding a custom content mapper
 
-Add it under `src/Mapper/` in the plugin's namespace (PSR-4 autoloaded). Extend `Default_Content_Mapper` and override only the methods you need; read the raw HTML with `$this->content_scrapper->get_content()`.
+Add it under `src/Mapper/` in the plugin's namespace (PSR-4 autoloaded). Extend `Default_Content_Mapper` and override only the methods you need; read the raw HTML with `$this->content_scraper->get_content()`.
 
 ```php
 <?php
 // src/Mapper/Article_Mapper.php
-namespace A8C\SpecialProjects\ScrapperToWP\Mapper;
+namespace A8C\SpecialProjects\ScraperToWP\Mapper;
 
 // Default_Content_Mapper is in this same namespace, so no `use`.
 class Article_Mapper extends Default_Content_Mapper {
@@ -163,7 +163,7 @@ class Article_Mapper extends Default_Content_Mapper {
         // Read inner text with DOMDocument (Tag_Processor can't — see Gotchas).
         libxml_use_internal_errors( true );
         $dom = new \DOMDocument();
-        $dom->loadHTML( $this->content_scrapper->get_content() );
+        $dom->loadHTML( $this->content_scraper->get_content() );
         libxml_clear_errors();
         $h1 = $dom->getElementsByTagName( 'h1' )->item( 0 );
         return $h1 ? trim( $h1->textContent ) : parent::get_title();
@@ -186,7 +186,7 @@ For images inside the content, call `Media::from_url( $image_url )` — it retur
 
 ### Content mapper — overridable methods
 
-All are defined on `Abstract_Content_Mapper` and implemented (as placeholders) by `Default_Content_Mapper`. Override only what you need. The mapper is constructed with the `Content_Scrapper`, available as `$this->content_scrapper`.
+All are defined on `Abstract_Content_Mapper` and implemented (as placeholders) by `Default_Content_Mapper`. Override only what you need. The mapper is constructed with the `Content_Scraper`, available as `$this->content_scraper`.
 
 | Method | Returns | Default (`Default_Content_Mapper`) | Notes |
 |--------|---------|-----------------------------------|-------|
@@ -216,7 +216,7 @@ Convenience aggregators (don't usually override): `compile_content()`, `compile_
 
 - Posts → the WordPress DB (normal `wp_insert_post`).
 - Media dedupe map → `uploads/wp-scraper-importer/media-map.sqlite` (or `.csv` if `pdo_sqlite` is unavailable).
-- Scrape progress → `uploads/scrapper_progress.json` (resumable; clear with `--reset-progress`).
+- Scrape progress → `uploads/scraper_progress.json` (resumable; clear with `--reset-progress`).
 
 ## How it SHOULD work — conventions
 
@@ -246,7 +246,7 @@ npm run tests:run:integration   # Integration suite (in-process WPLoader)
 - Integration tests mock HTTP with the `pre_http_request` filter — no live network.
 - `tests/Support/mock-plugin.php` is the "set it up as expected" harness: registers `Test_URL_Provider` + `Sample_Content_Mapper` on `WP_Scraper` and mocks the page response, used by `tests/Integration/Import_E2E_Test.php`.
 - The integration suite must load the plugin via `plugins: ['./plugin.php']` in `tests/Integration.suite.yml` (not the old scaffold filename).
-- A true CLI e2e (running the actual `wp scrapper-to-wp` via wp-browser's WPCLI module) is not yet wired; the current e2e drives the pipeline at the PHP level.
+- A true CLI e2e (running the actual `wp scraper-to-wp` via wp-browser's WPCLI module) is not yet wired; the current e2e drives the pipeline at the PHP level.
 
 ## Working rules
 

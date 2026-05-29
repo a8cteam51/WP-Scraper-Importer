@@ -11,7 +11,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @return  ($property is null ? PluginMetaData : ($property is PluginMetaKey ? PluginMetaData[PluginMetaKey] : null))
  */
-function a8scp_scrapper_to_wp_get_plugin_metadata( $property = null ) {
+function a8scp_scraper_to_wp_get_plugin_metadata( $property = null ) {
 	static $plugin_data = null;
 
 	$can_translate = 0 < did_action( 'init' );
@@ -23,7 +23,7 @@ function a8scp_scrapper_to_wp_get_plugin_metadata( $property = null ) {
 			require_once ABSPATH . 'wp-admin/includes/plugin.php';
 		}
 
-		$plugin_file                   = trailingslashit( WP_PLUGIN_DIR ) . constant( 'A8CSP_SCRAPPER_TO_WP_BASENAME' );
+		$plugin_file                   = trailingslashit( WP_PLUGIN_DIR ) . constant( 'A8CSP_SCRAPER_TO_WP_BASENAME' );
 		$plugin_data[ $translate_key ] = get_plugin_data( $plugin_file, false, $can_translate );
 	}
 
@@ -47,8 +47,8 @@ function a8scp_scrapper_to_wp_get_plugin_metadata( $property = null ) {
  *
  * @return  string
  */
-function a8scp_scrapper_to_wp_get_plugin_slug(): string {
-	$text_domain = a8scp_scrapper_to_wp_get_plugin_metadata( 'TextDomain' );
+function a8scp_scraper_to_wp_get_plugin_slug(): string {
+	$text_domain = a8scp_scraper_to_wp_get_plugin_metadata( 'TextDomain' );
 	return sanitize_key( $text_domain );
 }
 
@@ -60,8 +60,8 @@ function a8scp_scrapper_to_wp_get_plugin_slug(): string {
  *
  * @return  string
  */
-function a8scp_scrapper_to_wp_get_plugin_name(): string {
-	return a8scp_scrapper_to_wp_get_plugin_metadata( 'Name' );
+function a8scp_scraper_to_wp_get_plugin_name(): string {
+	return a8scp_scraper_to_wp_get_plugin_metadata( 'Name' );
 }
 
 /**
@@ -72,8 +72,8 @@ function a8scp_scrapper_to_wp_get_plugin_name(): string {
  *
  * @return  string
  */
-function a8scp_scrapper_to_wp_get_plugin_version(): string {
-	return a8scp_scrapper_to_wp_get_plugin_metadata( 'Version' );
+function a8scp_scraper_to_wp_get_plugin_version(): string {
+	return a8scp_scraper_to_wp_get_plugin_metadata( 'Version' );
 }
 
 /**
@@ -83,7 +83,7 @@ function a8scp_scrapper_to_wp_get_plugin_version(): string {
  *
  * @return  bool
  */
-function a8scp_scrapper_to_wp_is_wp_version_compatible( $min_wp_version ) {
+function a8scp_scraper_to_wp_is_wp_version_compatible( $min_wp_version ) {
 	if ( ! function_exists( 'is_wp_version_compatible' ) ) {
 		return false;
 	}
@@ -98,7 +98,7 @@ function a8scp_scrapper_to_wp_is_wp_version_compatible( $min_wp_version ) {
  *
  * @return  bool
  */
-function a8scp_scrapper_to_wp_is_php_version_compatible( $min_php_version ) {
+function a8scp_scraper_to_wp_is_php_version_compatible( $min_php_version ) {
 	if ( ! function_exists( 'is_php_version_compatible' ) ) {
 		return false;
 	}
@@ -111,8 +111,8 @@ function a8scp_scrapper_to_wp_is_php_version_compatible( $min_php_version ) {
  *
  * @return  true|\WP_Error
  */
-function a8scp_scrapper_to_wp_validate_requirements() {
-	$plugin_metadata = a8scp_scrapper_to_wp_get_plugin_metadata();
+function a8scp_scraper_to_wp_validate_requirements() {
+	$plugin_metadata = a8scp_scraper_to_wp_get_plugin_metadata();
 	if ( ! isset( $plugin_metadata['RequiresPHP'] ) || '' === $plugin_metadata['RequiresPHP'] ) {
 		$plugin_metadata['RequiresPHP'] = '8.3';
 	}
@@ -120,8 +120,8 @@ function a8scp_scrapper_to_wp_validate_requirements() {
 		$plugin_metadata['RequiresWP'] = '6.7';
 	}
 
-	$is_php_compatible = a8scp_scrapper_to_wp_is_php_version_compatible( $plugin_metadata['RequiresPHP'] );
-	$is_wp_compatible  = a8scp_scrapper_to_wp_is_wp_version_compatible( $plugin_metadata['RequiresWP'] );
+	$is_php_compatible = a8scp_scraper_to_wp_is_php_version_compatible( $plugin_metadata['RequiresPHP'] );
+	$is_wp_compatible  = a8scp_scraper_to_wp_is_wp_version_compatible( $plugin_metadata['RequiresWP'] );
 
 	$wp_error = new \WP_Error();
 	if ( ! $is_wp_compatible ) {
@@ -141,15 +141,15 @@ function a8scp_scrapper_to_wp_validate_requirements() {
  *
  * @return  void
  */
-function a8scp_scrapper_to_wp_output_requirements_error( $error ) {
+function a8scp_scraper_to_wp_output_requirements_error( $error ) {
 	add_action(
 		'admin_notices',
 		static function () use ( $error ) {
 			$requirements_error = \wp_sprintf(
 				/* translators: 1: Plugin name, 2: Plugin version */
 				__( '<strong>%1$s (version %2$s)</strong> could not be initialized.', 'a8csp-scaffold' ),
-				a8scp_scrapper_to_wp_get_plugin_metadata( 'Name' ),
-				a8scp_scrapper_to_wp_get_plugin_metadata( 'Version' )
+				a8scp_scraper_to_wp_get_plugin_metadata( 'Name' ),
+				a8scp_scraper_to_wp_get_plugin_metadata( 'Version' )
 			);
 
 			if ( $error->has_errors() ) {

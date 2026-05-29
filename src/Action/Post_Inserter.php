@@ -4,7 +4,7 @@
  *
  * This class is responsible for inserting posts into WordPress.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Command
  * @since       1.0.0
  * @version     1.0.0
@@ -12,7 +12,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Action;
+namespace A8C\SpecialProjects\ScraperToWP\Action;
 
 use RuntimeException;
 use InvalidArgumentException;
@@ -20,7 +20,7 @@ use WP_CLI;
 use WP_Post;
 use WP_Error;
 use WP_Term;
-use A8C\SpecialProjects\ScrapperToWP\Service\Media;
+use A8C\SpecialProjects\ScraperToWP\Service\Media;
 
 defined( 'ABSPATH' ) || exit;
 

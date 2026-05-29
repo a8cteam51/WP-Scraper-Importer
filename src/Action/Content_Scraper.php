@@ -3,7 +3,7 @@
  * Content scraper actions.
  * Takes a url and returns back the content of the page.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Command
  * @since       1.0.0
  * @version     1.0.0
@@ -11,7 +11,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Action;
+namespace A8C\SpecialProjects\ScraperToWP\Action;
 
 use RuntimeException;
 use InvalidArgumentException;
@@ -21,7 +21,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Action class for content scrapping.
  */
-class Content_Scrapper {
+class Content_Scraper {
 
 	/**
 	 * Hold the URL to scrape.

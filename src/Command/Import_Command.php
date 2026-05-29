@@ -2,7 +2,7 @@
 /**
  * Command used to scrape a list of links to scrape the content.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Command
  * @since       1.0.0
  * @version     1.0.0
@@ -10,14 +10,14 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Command;
+namespace A8C\SpecialProjects\ScraperToWP\Command;
 
 defined( 'ABSPATH' ) || exit;
 
-use A8C\SpecialProjects\ScrapperToWP\WP_Scraper;
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
-use A8C\SpecialProjects\ScrapperToWP\Action\Post_Inserter;
-use A8C\SpecialProjects\ScrapperToWP\Service\Progress_Tracker;
+use A8C\SpecialProjects\ScraperToWP\WP_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
+use A8C\SpecialProjects\ScraperToWP\Action\Post_Inserter;
+use A8C\SpecialProjects\ScraperToWP\Service\Progress_Tracker;
 use WP_CLI_Command;
 use Exception;
 use WP;
@@ -27,7 +27,7 @@ use WP_CLI\Fetchers\Post;
 use function WP_CLI\Utils\make_progress_bar;
 
 /**
- * Scrapper command.
+ * Scraper command.
  */
 class Import_Command extends WP_CLI_Command {
 
@@ -133,7 +133,7 @@ class Import_Command extends WP_CLI_Command {
 	 * default: false
 	 *
 	 * ## EXAMPLES
-	 * wp scrapper-to-wp import --dry-run --delay=30 --per=25
+	 * wp scraper-to-wp import --dry-run --delay=30 --per=25
 	 *
 	 * @since 1.0.0
 	 * @version 1.0.0
@@ -191,8 +191,11 @@ class Import_Command extends WP_CLI_Command {
 		// Get the URLs to import from the configured provider (Noop by default).
 		$provider = WP_Scraper::get_url_provider();
 		$provider->setup();
-		$this->urls_to_import = $provider->get_urls();
-		$provider->teardown();
+		try {
+			$this->urls_to_import = $provider->get_urls();
+		} finally {
+			$provider->teardown();
+		}
 
 		// If we have set to reset the progress, reset it.
 		if ( isset( $assoc_args['reset-progress'] ) && true === $assoc_args['reset-progress'] ) {
@@ -299,20 +302,20 @@ class Import_Command extends WP_CLI_Command {
 		// Iterate over the links and scrape the content.
 		foreach ( $url_chunk as $url ) {
 			try {
-				// Create a new content scrapper instance.
-				$content_scrapper = new Content_Scrapper( $url );
+				// Create a new content scraper instance.
+				$content_scraper = new Content_Scraper( $url );
 
 				// Process the URL and scrape the content.
-				$content_scrapper->process();
+				$content_scraper->process();
 
 				// If dry run, skip the import.
 				if ( $this->dry_run ) {
-					$this->process_as_dry_run( $content_scrapper );
+					$this->process_as_dry_run( $content_scraper );
 					continue;
 				}
 
 				// Process the content as an import.
-				$this->process_as_import( $content_scrapper );
+				$this->process_as_import( $content_scraper );
 			} catch ( \Exception $e ) {
 				// Show the error message.
 				if ( ! $this->is_silent() ) {
@@ -331,14 +334,14 @@ class Import_Command extends WP_CLI_Command {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
+	 * @param Content_Scraper $content_scraper The content scraper instance.
 	 *
 	 * @return void
 	 *
 	 * @throws Exception Thrown if there are errors during the dry run.
 	 */
-	public function process_as_dry_run( Content_Scrapper $content_scrapper ): void {
-		$mapper = WP_Scraper::get_content_mapper( $content_scrapper );
+	public function process_as_dry_run( Content_Scraper $content_scraper ): void {
+		$mapper = WP_Scraper::get_content_mapper( $content_scraper );
 
 		$title   = $mapper->get_title();
 		$content = $mapper->get_content();
@@ -346,9 +349,9 @@ class Import_Command extends WP_CLI_Command {
 		$terms   = $mapper->get_terms();
 
 		// Check if we have any errors.
-		if ( $content_scrapper->has_errors() ) {
+		if ( $content_scraper->has_errors() ) {
 			// Compile the error message.
-			$message = PHP_EOL . 'Dry run errors for URL ' . $content_scrapper->get_url() . PHP_EOL . implode( PHP_EOL, $content_scrapper->get_errors() );
+			$message = PHP_EOL . 'Dry run errors for URL ' . $content_scraper->get_url() . PHP_EOL . implode( PHP_EOL, $content_scraper->get_errors() );
 
 			throw new Exception( esc_attr( $message ) );
 		}
@@ -356,7 +359,7 @@ class Import_Command extends WP_CLI_Command {
 		// Show the message.
 		$message = sprintf(
 			'Dry run for URL %s completed successfully. Title: %s, Body: %s, Author: %s, Terms: %s',
-			$content_scrapper->get_url(),
+			$content_scraper->get_url(),
 			wp_trim_words( \wp_strip_all_tags( $content ), 25, '...' ),
 			$title,
 			$author,
@@ -394,11 +397,11 @@ class Import_Command extends WP_CLI_Command {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
+	 * @param Content_Scraper $content_scraper The content scraper instance.
 	 *
 	 * @return void
 	 */
-	public function process_as_import( Content_Scrapper $content_scrapper ): void {
+	public function process_as_import( Content_Scraper $content_scraper ): void {
 		// ====================================================================
 		// EXTENSION POINT 1: CUSTOMIZE THE CONTENT MAPPER
 		// ====================================================================
@@ -408,28 +411,28 @@ class Import_Command extends WP_CLI_Command {
 		 * the scraped content. You have several options:
 		 *
 		 * OPTION 1: Use a different mapper class entirely
-		 * $mapper = new Custom_Blog_Mapper( $content_scrapper );
-		 * $mapper = new Product_Mapper( $content_scrapper );
-		 * $mapper = new News_Article_Mapper( $content_scrapper );
+		 * $mapper = new Custom_Blog_Mapper( $content_scraper );
+		 * $mapper = new Product_Mapper( $content_scraper );
+		 * $mapper = new News_Article_Mapper( $content_scraper );
 		 *
 		 * OPTION 2: Choose mapper based on URL or content
-		 * $url = $content_scrapper->get_url();
+		 * $url = $content_scraper->get_url();
 		 * if ( strpos( $url, '/products/' ) !== false ) {
-		 *     $mapper = new Product_Mapper( $content_scrapper );
+		 *     $mapper = new Product_Mapper( $content_scraper );
 		 * } elseif ( strpos( $url, '/news/' ) !== false ) {
-		 *     $mapper = new News_Mapper( $content_scrapper );
+		 *     $mapper = new News_Mapper( $content_scraper );
 		 * } else {
-		 *     $mapper = new Default_Content_Mapper( $content_scrapper );
+		 *     $mapper = new Default_Content_Mapper( $content_scraper );
 		 * }
 		 *
 		 * OPTION 3: Choose mapper based on content analysis
-		 * $content = $content_scrapper->get_content();
+		 * $content = $content_scraper->get_content();
 		 * if ( strpos( $content, 'class="recipe"' ) !== false ) {
-		 *     $mapper = new Recipe_Mapper( $content_scrapper );
+		 *     $mapper = new Recipe_Mapper( $content_scraper );
 		 * } elseif ( strpos( $content, 'class="event"' ) !== false ) {
-		 *     $mapper = new Event_Mapper( $content_scrapper );
+		 *     $mapper = new Event_Mapper( $content_scraper );
 		 * } else {
-		 *     $mapper = new Default_Content_Mapper( $content_scrapper );
+		 *     $mapper = new Default_Content_Mapper( $content_scraper );
 		 * }
 		 *
 		 * OPTION 4: Dynamic mapper selection with fallbacks
@@ -440,7 +443,7 @@ class Import_Command extends WP_CLI_Command {
 		 * ];
 		 * foreach ( $mapper_classes as $class ) {
 		 *     if ( class_exists( $class ) ) {
-		 *         $mapper = new $class( $content_scrapper );
+		 *         $mapper = new $class( $content_scraper );
 		 *         break;
 		 *     }
 		 * }
@@ -450,7 +453,7 @@ class Import_Command extends WP_CLI_Command {
 		 */
 		// ====================================================================
 
-		$mapper = WP_Scraper::get_content_mapper( $content_scrapper );
+		$mapper = WP_Scraper::get_content_mapper( $content_scraper );
 
 		$title   = $mapper->get_title();
 		$content = $mapper->get_content();
@@ -508,7 +511,7 @@ class Import_Command extends WP_CLI_Command {
 		// }
 		//
 		// EXAMPLE 3: Add to specific taxonomy terms
-		// if ( strpos( $content_scrapper->get_url(), 'electronics' ) !== false ) {
+		// if ( strpos( $content_scraper->get_url(), 'electronics' ) !== false ) {
 		// $inserter->add_terms( 'product_category', ['Electronics', 'Imported'] );
 		// }
 		//
@@ -526,12 +529,12 @@ class Import_Command extends WP_CLI_Command {
 		//
 		// EXAMPLE 6: Set menu order for pages
 		// if ( $post_type === 'page' ) {
-		// $url_segments = explode( '/', trim( parse_url( $content_scrapper->get_url(), PHP_URL_PATH ), '/' ) );
+		// $url_segments = explode( '/', trim( parse_url( $content_scraper->get_url(), PHP_URL_PATH ), '/' ) );
 		// $inserter->set_menu_order( count( $url_segments ) );
 		// }
 		//
 		// EXAMPLE 7: Add custom hooks for third-party integrations
-		// do_action( 'scraper_before_post_insert', $inserter, $content_scrapper, $mapper );
+		// do_action( 'scraper_before_post_insert', $inserter, $content_scraper, $mapper );
 		//
 		// EXAMPLE 8: Set excerpt if not automatically generated
 		// if ( empty( $inserter->get_post_excerpt() ) ) {
@@ -554,7 +557,7 @@ class Import_Command extends WP_CLI_Command {
 		// $title,
 		// $post_type,
 		// $post_status,
-		// $content_scrapper->get_url()
+		// $content_scraper->get_url()
 		// ) );
 		//
 		// ADD YOUR CUSTOM POST PROCESSING LOGIC HERE
@@ -589,7 +592,7 @@ class Import_Command extends WP_CLI_Command {
 		// 'action' => 'post_imported',
 		// 'post_id' => $inserter->get_post_id(),
 		// 'title' => $title,
-		// 'url' => $content_scrapper->get_url()
+		// 'url' => $content_scraper->get_url()
 		// ])
 		// ]);
 		// }
@@ -597,7 +600,7 @@ class Import_Command extends WP_CLI_Command {
 
 		// If we dont have a post, we can assume there was an error.
 		if ( ! $inserter->has_post_instance() ) {
-			$this->errors[] = 'Error creating post for URL: ' . $content_scrapper->get_url();
+			$this->errors[] = 'Error creating post for URL: ' . $content_scraper->get_url();
 		}
 
 		// if we have a featured image, set it.
@@ -654,7 +657,7 @@ class Import_Command extends WP_CLI_Command {
 	 * @return void
 	 */
 	private function show_pre_run_messages() {
-		\WP_CLI::line( 'Scrapper to WP - Import Command' );
+		\WP_CLI::line( 'Scraper to WP - Import Command' );
 		\WP_CLI::line( '----------------------------------------' );
 		\WP_CLI::line( 'This command will scrape the content from the URLs provided.' );
 		\WP_CLI::line( 'The content will be imported into the WordPress site.' );

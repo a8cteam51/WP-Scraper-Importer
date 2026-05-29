@@ -2,7 +2,7 @@
 /**
  * Service for tracking the progress of content scraping.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Command
  * @since       1.0.0
  * @version     1.0.0
@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Service;
+namespace A8C\SpecialProjects\ScraperToWP\Service;
 
 /**
  * Service class for tracking the progress of content scraping.
@@ -49,7 +49,7 @@ class Progress_Tracker {
 		if ( null === $file_path ) {
 			// Create a temp file in the WP Uploads directory.
 			$upload_dir = wp_upload_dir();
-			$file_path  = $upload_dir['basedir'] . '/scrapper_progress.json';
+			$file_path  = $upload_dir['basedir'] . '/scraper_progress.json';
 		}
 		$this->file_path = $file_path;
 	}

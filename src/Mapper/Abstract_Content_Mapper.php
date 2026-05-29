@@ -5,7 +5,7 @@
  * This class defines the interface for mapping scraped content to WordPress post data.
  * Extend this class to implement custom content mapping logic.
  *
- * @package     A8CSP_Scrapper_to_WP
+ * @package     A8CSP_Scraper_to_WP
  * @subpackage  Mapper
  * @since       1.0.0
  * @version     1.0.0
@@ -13,9 +13,9 @@
 
 declare( strict_types=1 );
 
-namespace A8C\SpecialProjects\ScrapperToWP\Mapper;
+namespace A8C\SpecialProjects\ScraperToWP\Mapper;
 
-use A8C\SpecialProjects\ScrapperToWP\Action\Content_Scrapper;
+use A8C\SpecialProjects\ScraperToWP\Action\Content_Scraper;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,21 +28,21 @@ defined( 'ABSPATH' ) || exit;
 abstract class Abstract_Content_Mapper {
 
 	/**
-	 * The content scrapper instance.
+	 * The content scraper instance.
 	 *
-	 * @var Content_Scrapper
+	 * @var Content_Scraper
 	 */
-	protected $content_scrapper;
+	protected $content_scraper;
 
 	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param Content_Scrapper $content_scrapper The content scrapper instance.
+	 * @param Content_Scraper $content_scraper The content scraper instance.
 	 */
-	public function __construct( Content_Scrapper $content_scrapper ) {
-		$this->content_scrapper = $content_scrapper;
+	public function __construct( Content_Scraper $content_scraper ) {
+		$this->content_scraper = $content_scraper;
 	}
 
 	/**

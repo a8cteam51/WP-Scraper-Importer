@@ -1,6 +1,6 @@
 <?php declare( strict_types=1 );
 
-use A8C\SpecialProjects\ScrapperToWP\Plugin;
+use A8C\SpecialProjects\ScraperToWP\Plugin;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -14,7 +14,7 @@ defined( 'ABSPATH' ) || exit;
  *
  * @return  Plugin
  */
-function a8scp_scrapper_to_wp_get_plugin_instance(): Plugin {
+function a8scp_scraper_to_wp_get_plugin_instance(): Plugin {
 	return Plugin::get_instance();
 }
 
